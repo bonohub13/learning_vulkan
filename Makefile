@@ -13,11 +13,14 @@ build-shader: clean-shader
 	echo "Compiling shaders..."
 	./bin/compile_shaders.sh "build" "${PWD}/shaders"
 
+# Rust code
 clean:
 	$(CC) clean
 
-# Rust code
-build: clean
+fmt:
+	$(CC) fmt
+
+build: fmt clean
 	$(CC) build
 
 cross-compile-win64: clean

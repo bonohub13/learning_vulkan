@@ -23,6 +23,8 @@ pub struct HelloTriangleApplication {
     _swapchain_images: Vec<ash::vk::Image>,
     _swapchain_extent: ash::vk::Extent2D,
     swapchain_imageviews: Vec<ash::vk::ImageView>,
+
+    render_pass: ash::vk::RenderPass,
 }
 
 impl HelloTriangleApplication {
@@ -72,6 +74,9 @@ impl HelloTriangleApplication {
             &swapchain_stuff.images,
         );
 
+        let render_pass =
+            vk_common::render_pass::create_render_pass(&device, swapchain_stuff.format);
+
         Self {
             event_loop: RefCell::new(event_loop),
             window,
@@ -97,6 +102,8 @@ impl HelloTriangleApplication {
             _swapchain_images: swapchain_stuff.images,
             _swapchain_extent: swapchain_stuff.extent,
             swapchain_imageviews,
+
+            render_pass,
         }
     }
 
@@ -163,6 +170,8 @@ impl Drop for HelloTriangleApplication {
         use vk_utils::constants::VK_VALIDATION_LAYERS;
 
         unsafe {
+            self.device.destroy_render_pass(self.render_pass, None);
+
             for &imageview in self.swapchain_imageviews.iter() {
                 self.device.destroy_image_view(imageview, None);
             }

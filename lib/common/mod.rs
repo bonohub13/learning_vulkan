@@ -4,6 +4,7 @@ mod logical_device;
 mod physical_device;
 pub mod pipeline;
 mod queue_family_indices;
+pub mod render_pass;
 pub mod surface;
 pub mod swapchain;
 
