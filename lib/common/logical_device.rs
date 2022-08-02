@@ -5,7 +5,7 @@ pub fn create_logical_device(
     vk_surface: &crate::common::surface::VkSurface,
 ) -> (ash::Device, crate::common::QueueFamilyIndices) {
     use crate::common::find_queue_family;
-    use ash::vk;
+    use ash::{extensions::khr::Swapchain, vk};
     use std::{collections::HashSet, ffi::CString, os::raw::c_char};
 
     let indices = find_queue_family(instance, physical_device, vk_surface);
@@ -25,7 +25,11 @@ pub fn create_logical_device(
         queue_create_infos.push(queue_create_info.build());
     }
 
-    let physical_device_features = vk::PhysicalDeviceFeatures::default();
+    let device_extension_names = [Swapchain::name().as_ptr()];
+    let physical_device_features = vk::PhysicalDeviceFeatures {
+        shader_clip_distance: 1,
+        ..Default::default()
+    };
     let required_validation_layer_raw_names: Vec<CString> = validation
         .required_validation_layers
         .iter()
@@ -40,10 +44,12 @@ pub fn create_logical_device(
             .queue_create_infos(&queue_create_infos)
             .enabled_features(&physical_device_features)
             .enabled_layer_names(&enable_layer_names)
+            .enabled_extension_names(&device_extension_names)
     } else {
         vk::DeviceCreateInfo::builder()
             .queue_create_infos(&queue_create_infos)
             .enabled_features(&physical_device_features)
+            .enabled_extension_names(&device_extension_names)
     };
 
     let device = unsafe {

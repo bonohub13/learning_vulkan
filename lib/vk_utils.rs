@@ -12,6 +12,8 @@ mod _constants {
     pub const ENGINE_NAME: &str = "No Engine";
     pub const ENGINE_VERSION: u32 = vk::make_api_version(0, 1, 0, 0);
 
+    pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
+
     pub const VK_API_VERSION: u32 = vk::make_api_version(0, 1, 1, 190);
     pub const VK_VALIDATION_LAYERS: ValidationLayer = ValidationLayer {
         required_validation_layers: &["VK_LAYER_KHRONOS_validation"],
@@ -29,6 +31,8 @@ pub mod constants {
     pub use super::_constants::{
         APPLICATION_NAME, APPLICATION_VERSION, ENGINE_NAME, ENGINE_VERSION,
     };
+    // Other stuff
+    pub use super::_constants::MAX_FRAMES_IN_FLIGHT;
     // Vulkan stuff
     pub use super::_constants::{VK_API_VERSION, VK_DEVICE_EXTENSIONS, VK_VALIDATION_LAYERS};
 }

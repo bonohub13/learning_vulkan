@@ -1,9 +1,9 @@
 mod hello_triangle_application;
 
-use hello_triangle_application::HelloTriangleApplication;
+use hello_triangle_application::VkAppBase;
 
 fn main() {
-    let mut app = HelloTriangleApplication::new();
+    let app = VkAppBase::new();
 
-    app.run();
+    app.render_loop(|| {});
 }

@@ -27,7 +27,7 @@ cross-compile-win64: clean
 	$(CC) build --target x86_64-pc-windows-gnu
 
 run:
-	$(CC) run
+	ENABLE_VKBASALT=0 $(CC) run
 
 docker-build: clean
 	docker build . -t ofv/linux -f docker/Dockerfile.linux

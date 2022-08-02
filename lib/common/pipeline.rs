@@ -2,8 +2,9 @@ mod _graphics {
     use ash::vk;
     pub fn create_graphics_pipeline(
         device: &ash::Device,
+        render_pass: vk::RenderPass,
         swapchain_extent: vk::Extent2D,
-    ) -> vk::PipelineLayout {
+    ) -> (vk::Pipeline, vk::PipelineLayout) {
         use crate::tools as vk_tools;
         use std::{ffi::CString, path::Path};
 
@@ -17,7 +18,7 @@ mod _graphics {
 
         let main_function_name = CString::new("main").unwrap();
 
-        let _shader_stages = [
+        let shader_stages = [
             // Vertex shader
             vk::PipelineShaderStageCreateInfo::builder()
                 .module(vert_shader_module)
@@ -32,9 +33,9 @@ mod _graphics {
                 .build(),
         ];
 
-        let _vertex_input_state_create_info = vk::PipelineVertexInputStateCreateInfo::default();
+        let vertex_input_state_create_info = vk::PipelineVertexInputStateCreateInfo::default();
 
-        let _vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo::builder()
+        let vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo::builder()
             .primitive_restart_enable(false)
             .topology(vk::PrimitiveTopology::TRIANGLE_LIST);
 
@@ -50,11 +51,11 @@ mod _graphics {
             offset: vk::Offset2D { x: 0, y: 0 },
             extent: swapchain_extent,
         }];
-        let _viewport_state_create_info = vk::PipelineViewportStateCreateInfo::builder()
+        let viewport_state_create_info = vk::PipelineViewportStateCreateInfo::builder()
             .scissors(&scissors)
             .viewports(&viewports);
 
-        let _rasterization_state_create_info = vk::PipelineRasterizationStateCreateInfo::builder()
+        let rasterization_state_create_info = vk::PipelineRasterizationStateCreateInfo::builder()
             .depth_clamp_enable(false)
             .cull_mode(vk::CullModeFlags::BACK)
             .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
@@ -66,7 +67,7 @@ mod _graphics {
             .depth_bias_enable(false)
             .depth_bias_slope_factor(0.0);
 
-        let _multisample_state_create_info = vk::PipelineMultisampleStateCreateInfo::builder()
+        let multisample_state_create_info = vk::PipelineMultisampleStateCreateInfo::builder()
             .rasterization_samples(vk::SampleCountFlags::TYPE_1)
             .sample_shading_enable(false)
             .min_sample_shading(0.0)
@@ -82,7 +83,7 @@ mod _graphics {
             write_mask: 0,
             reference: 0,
         };
-        let _depth_state_create_info = vk::PipelineDepthStencilStateCreateInfo::builder()
+        let depth_state_create_info = vk::PipelineDepthStencilStateCreateInfo::builder()
             .depth_test_enable(false)
             .depth_write_enable(false)
             .depth_compare_op(vk::CompareOp::LESS_OR_EQUAL)
@@ -103,7 +104,7 @@ mod _graphics {
             .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
             .alpha_blend_op(vk::BlendOp::ADD)
             .build()];
-        let _color_blend_state = vk::PipelineColorBlendStateCreateInfo::builder()
+        let color_blend_state = vk::PipelineColorBlendStateCreateInfo::builder()
             .logic_op_enable(false)
             .logic_op(vk::LogicOp::COPY)
             .attachments(&color_blend_attachment_states)
@@ -117,12 +118,37 @@ mod _graphics {
                 .expect("Failed to create pipenline layout")
         };
 
+        let graphic_pipeline_create_infos = [vk::GraphicsPipelineCreateInfo::builder()
+            .stages(&shader_stages)
+            .vertex_input_state(&vertex_input_state_create_info)
+            .input_assembly_state(&vertex_input_assembly_state_info)
+            .viewport_state(&viewport_state_create_info)
+            .rasterization_state(&rasterization_state_create_info)
+            .multisample_state(&multisample_state_create_info)
+            .depth_stencil_state(&depth_state_create_info)
+            .color_blend_state(&color_blend_state)
+            .layout(pipeline_layout)
+            .render_pass(render_pass)
+            .subpass(0)
+            .base_pipeline_index(-1)
+            .build()];
+
+        let graphics_pipelines = unsafe {
+            device
+                .create_graphics_pipelines(
+                    vk::PipelineCache::null(),
+                    &graphic_pipeline_create_infos,
+                    None,
+                )
+                .expect("Failed to create Graphics Pipeline")
+        };
+
         unsafe {
             device.destroy_shader_module(vert_shader_module, None);
             device.destroy_shader_module(frag_shader_module, None);
         }
 
-        pipeline_layout
+        (graphics_pipelines[0], pipeline_layout)
     }
 }
 
