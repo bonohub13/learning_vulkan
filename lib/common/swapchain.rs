@@ -59,9 +59,11 @@ impl VkSwapChain {
         let surface_present_mode =
             Self::choose_swapchain_present_mode(&swapchain_support.present_modes);
         let surface_extent = Self::choose_swapchain_extent(&swapchain_support.capabilities);
-        let image_count = if swapchain_support.capabilities.max_image_count > 0 {
-            (swapchain_support.capabilities.min_image_count + 1)
-                .min(swapchain_support.capabilities.max_image_count)
+        let image_count = if swapchain_support.capabilities.max_image_count > 0
+            && swapchain_support.capabilities.min_image_count + 1
+                > swapchain_support.capabilities.max_image_count
+        {
+            swapchain_support.capabilities.max_image_count
         } else {
             swapchain_support.capabilities.min_image_count + 1
         };
@@ -79,6 +81,16 @@ impl VkSwapChain {
                 (vk::SharingMode::EXCLUSIVE, vec![])
             };
 
+        let pre_transform = if swapchain_support
+            .capabilities
+            .supported_transforms
+            .contains(vk::SurfaceTransformFlagsKHR::IDENTITY)
+        {
+            vk::SurfaceTransformFlagsKHR::IDENTITY
+        } else {
+            swapchain_support.capabilities.current_transform
+        };
+
         let swapchain_create_info = vk::SwapchainCreateInfoKHR::builder()
             .surface(surface_stuff.surface)
             .min_image_count(image_count)
@@ -88,7 +100,7 @@ impl VkSwapChain {
             .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
             .image_sharing_mode(image_sharing_mode)
             .queue_family_indices(&queue_family_indices)
-            .pre_transform(swapchain_support.capabilities.current_transform)
+            .pre_transform(pre_transform)
             .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
             .present_mode(surface_present_mode)
             .clipped(true)
@@ -149,24 +161,15 @@ impl VkSwapChain {
     fn choose_swapchain_extent(
         capabilities: &ash::vk::SurfaceCapabilitiesKHR,
     ) -> ash::vk::Extent2D {
-        if capabilities.current_extent.width != u32::max_value() {
+        if capabilities.current_extent.width != std::u32::MAX {
             capabilities.current_extent
         } else {
             use crate::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
             use ash::vk;
-            use num::clamp;
 
             vk::Extent2D {
-                width: clamp(
-                    WINDOW_WIDTH,
-                    capabilities.min_image_extent.width,
-                    capabilities.max_image_extent.width,
-                ),
-                height: clamp(
-                    WINDOW_HEIGHT,
-                    capabilities.min_image_extent.height,
-                    capabilities.max_image_extent.height,
-                ),
+                width: WINDOW_WIDTH,
+                height: WINDOW_HEIGHT,
             }
         }
     }

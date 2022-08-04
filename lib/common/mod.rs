@@ -1,4 +1,6 @@
 pub mod command;
+pub mod depth_image;
+pub mod fence;
 pub mod framebuffers;
 pub mod image_view;
 mod instance;
