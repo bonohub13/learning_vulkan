@@ -61,8 +61,8 @@ pub fn populate_debug_messenger_create_info() -> ash::vk::DebugUtilsMessengerCre
     vk::DebugUtilsMessengerCreateInfoEXT::builder()
         .message_severity(
             vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
-                | vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE
-                | vk::DebugUtilsMessageSeverityFlagsEXT::INFO
+                // | vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE
+                // | vk::DebugUtilsMessageSeverityFlagsEXT::INFO
                 | vk::DebugUtilsMessageSeverityFlagsEXT::ERROR,
         )
         .message_type(

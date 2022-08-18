@@ -34,7 +34,7 @@ mod _depth_image {
 
             let depth_image_memory_req =
                 unsafe { device.get_image_memory_requirements(depth_image) };
-            let depth_image_memory_index = Self::find_memorytype_index(
+            let depth_image_memory_index = find_memorytype_index(
                 &depth_image_memory_req,
                 &device_memory_properties,
                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
@@ -78,22 +78,23 @@ mod _depth_image {
                 memory: depth_image_memory,
             }
         }
+    }
 
-        fn find_memorytype_index(
-            memory_requirements: &vk::MemoryRequirements,
-            memory_properties: &vk::PhysicalDeviceMemoryProperties,
-            flags: vk::MemoryPropertyFlags,
-        ) -> Option<u32> {
-            memory_properties.memory_types[..memory_properties.memory_type_count as _]
-                .iter()
-                .enumerate()
-                .find(|(index, memory_type)| {
-                    (1 << index) & memory_requirements.memory_type_bits != 0
-                        && memory_type.property_flags & flags == flags
-                })
-                .map(|(index, _)| index as _)
-        }
+    pub fn find_memorytype_index(
+        memory_requirements: &vk::MemoryRequirements,
+        memory_properties: &vk::PhysicalDeviceMemoryProperties,
+        flags: vk::MemoryPropertyFlags,
+    ) -> Option<u32> {
+        memory_properties.memory_types[..memory_properties.memory_type_count as _]
+            .iter()
+            .enumerate()
+            .find(|(index, memory_type)| {
+                (1 << index) & memory_requirements.memory_type_bits != 0
+                    && memory_type.property_flags & flags == flags
+            })
+            .map(|(index, _)| index as _)
     }
 }
 
+pub use _depth_image::find_memorytype_index;
 pub use _depth_image::DepthImage;

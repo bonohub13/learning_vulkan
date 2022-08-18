@@ -47,31 +47,35 @@ mod _vk_app_base {
         debug_utils_loader: DebugUtils,
         debug_messenger: vk::DebugUtilsMessengerEXT,
 
-        _physical_device: vk::PhysicalDevice,
-        logical_device: ash::Device,
-        _graphics_queue: vk::Queue,
-        _present_queue: vk::Queue,
+        pub physical_device: vk::PhysicalDevice,
+        pub device_memory_properties: vk::PhysicalDeviceMemoryProperties,
+        pub logical_device: ash::Device,
+        pub graphics_queue: vk::Queue,
+        pub present_queue: vk::Queue,
 
-        surface: vk::SurfaceKHR,
-        surface_loader: Surface,
-        surface_format: vk::SurfaceFormatKHR,
-        surface_resolution: vk::Extent2D,
+        pub surface: vk::SurfaceKHR,
+        pub surface_loader: Surface,
+        pub surface_format: vk::SurfaceFormatKHR,
+        pub surface_resolution: vk::Extent2D,
 
-        swapchain: vk::SwapchainKHR,
-        swapchain_loader: Swapchain,
-        present_images: Vec<vk::Image>,
-        present_image_views: Vec<vk::ImageView>,
+        pub swapchain: vk::SwapchainKHR,
+        pub swapchain_loader: Swapchain,
+        pub present_images: Vec<vk::Image>,
+        pub present_image_views: Vec<vk::ImageView>,
 
-        pool: vk::CommandPool,
-        draw_command_buffer: vk::CommandBuffer,
-        setup_command_buffer: vk::CommandBuffer,
+        pub pool: vk::CommandPool,
+        pub draw_command_buffer: vk::CommandBuffer,
+        pub setup_command_buffer: vk::CommandBuffer,
 
-        depth_image: vk::Image,
-        depth_image_view: vk::ImageView,
-        depth_image_memory: vk::DeviceMemory,
+        pub depth_image: vk::Image,
+        pub depth_image_view: vk::ImageView,
+        pub depth_image_memory: vk::DeviceMemory,
 
-        draw_commands_reuse_fence: vk::Fence,
-        setup_commands_reuse_fence: vk::Fence,
+        pub draw_commands_reuse_fence: vk::Fence,
+        pub setup_commands_reuse_fence: vk::Fence,
+
+        pub present_complete_semaphore: vk::Semaphore,
+        pub rendering_complete_semaphore: vk::Semaphore,
     }
 
     impl VkAppBase {
@@ -91,6 +95,8 @@ mod _vk_app_base {
                 vk_common::surface::VkSurface::new(&entry, &instance, &app_base.window);
 
             let physical_device = vk_common::pick_physical_device(&instance, &surface_stuff);
+            let device_memory_properties =
+                unsafe { instance.get_physical_device_memory_properties(physical_device) };
             let (logical_device, queue_family) = vk_common::create_logical_device(
                 &instance,
                 physical_device,
@@ -179,6 +185,8 @@ mod _vk_app_base {
                 },
             );
 
+            let semaphore_stuff = vk_common::semaphore::VkSemaphore::new(&logical_device);
+
             Self {
                 app_base,
                 _entry: entry,
@@ -187,10 +195,11 @@ mod _vk_app_base {
                 debug_utils_loader,
                 debug_messenger,
 
-                _physical_device: physical_device,
+                physical_device,
+                device_memory_properties,
                 logical_device,
-                _graphics_queue: graphics_queue,
-                _present_queue: present_queue,
+                graphics_queue,
+                present_queue,
 
                 surface_loader: surface_stuff.surface_loader,
                 surface: surface_stuff.surface,
@@ -212,6 +221,9 @@ mod _vk_app_base {
 
                 draw_commands_reuse_fence: fences.draw_command_reuse_fence,
                 setup_commands_reuse_fence: fences.setup_command_reuse_fence,
+
+                present_complete_semaphore: semaphore_stuff.present_complete,
+                rendering_complete_semaphore: semaphore_stuff.rendering_complete,
             }
         }
     }
@@ -221,6 +233,11 @@ mod _vk_app_base {
             use vk_utils::constants::VK_VALIDATION_LAYERS;
 
             unsafe {
+                self.logical_device
+                    .destroy_semaphore(self.rendering_complete_semaphore, None);
+                self.logical_device
+                    .destroy_semaphore(self.present_complete_semaphore, None);
+
                 self.logical_device
                     .destroy_fence(self.draw_commands_reuse_fence, None);
                 self.logical_device

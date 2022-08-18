@@ -20,24 +20,28 @@ mod _graphics {
 
         let shader_stages = [
             // Vertex shader
-            vk::PipelineShaderStageCreateInfo::builder()
-                .module(vert_shader_module)
-                .name(&main_function_name)
-                .stage(vk::ShaderStageFlags::VERTEX)
-                .build(),
+            vk::PipelineShaderStageCreateInfo {
+                module: vert_shader_module,
+                p_name: main_function_name.as_ptr(),
+                stage: vk::ShaderStageFlags::VERTEX,
+                ..Default::default()
+            },
             // Fragment shader
-            vk::PipelineShaderStageCreateInfo::builder()
-                .module(frag_shader_module)
-                .name(&main_function_name)
-                .stage(vk::ShaderStageFlags::FRAGMENT)
-                .build(),
+            vk::PipelineShaderStageCreateInfo {
+                s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
+                module: frag_shader_module,
+                p_name: main_function_name.as_ptr(),
+                stage: vk::ShaderStageFlags::FRAGMENT,
+                ..Default::default()
+            },
         ];
 
-        let vertex_input_state_create_info = vk::PipelineVertexInputStateCreateInfo::default();
-
-        let vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo::builder()
-            .primitive_restart_enable(false)
-            .topology(vk::PrimitiveTopology::TRIANGLE_LIST);
+        let vertex_input_state_info = vk::PipelineVertexInputStateCreateInfo::default();
+        let vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo {
+            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
+            primitive_restart_enable: vk::FALSE,
+            ..Default::default()
+        };
 
         let viewports = [vk::Viewport {
             x: 0.0,
@@ -47,32 +51,22 @@ mod _graphics {
             min_depth: 0.0,
             max_depth: 1.0,
         }];
-        let scissors = [vk::Rect2D {
-            offset: vk::Offset2D { x: 0, y: 0 },
-            extent: swapchain_extent,
-        }];
+        let scissors = [swapchain_extent.into()];
         let viewport_state_create_info = vk::PipelineViewportStateCreateInfo::builder()
             .scissors(&scissors)
             .viewports(&viewports);
 
-        let rasterization_state_create_info = vk::PipelineRasterizationStateCreateInfo::builder()
-            .depth_clamp_enable(false)
-            .cull_mode(vk::CullModeFlags::BACK)
-            .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
-            .line_width(1.0)
-            .polygon_mode(vk::PolygonMode::FILL)
-            .rasterizer_discard_enable(false)
-            .depth_bias_clamp(0.0)
-            .depth_bias_constant_factor(0.0)
-            .depth_bias_enable(false)
-            .depth_bias_slope_factor(0.0);
+        let rasterization_state_create_info = vk::PipelineRasterizationStateCreateInfo {
+            front_face: vk::FrontFace::COUNTER_CLOCKWISE,
+            line_width: 1.0,
+            polygon_mode: vk::PolygonMode::FILL,
+            ..Default::default()
+        };
 
-        let multisample_state_create_info = vk::PipelineMultisampleStateCreateInfo::builder()
-            .rasterization_samples(vk::SampleCountFlags::TYPE_1)
-            .sample_shading_enable(false)
-            .min_sample_shading(0.0)
-            .alpha_to_one_enable(false)
-            .alpha_to_coverage_enable(false);
+        let multisample_state_create_info = vk::PipelineMultisampleStateCreateInfo {
+            rasterization_samples: vk::SampleCountFlags::TYPE_1,
+            ..Default::default()
+        };
 
         let stencil_state = vk::StencilOpState {
             fail_op: vk::StencilOp::KEEP,
@@ -83,27 +77,26 @@ mod _graphics {
             write_mask: 0,
             reference: 0,
         };
-        let depth_state_create_info = vk::PipelineDepthStencilStateCreateInfo::builder()
-            .depth_test_enable(false)
-            .depth_write_enable(false)
-            .depth_compare_op(vk::CompareOp::LESS_OR_EQUAL)
-            .depth_bounds_test_enable(false)
-            .stencil_test_enable(false)
-            .front(stencil_state)
-            .back(stencil_state)
-            .min_depth_bounds(0.0)
-            .max_depth_bounds(1.0);
+        let depth_state_create_info = vk::PipelineDepthStencilStateCreateInfo {
+            depth_test_enable: 1,
+            depth_write_enable: 1,
+            depth_compare_op: vk::CompareOp::LESS_OR_EQUAL,
+            front: stencil_state,
+            back: stencil_state,
+            max_depth_bounds: 1.0,
+            ..Default::default()
+        };
 
-        let color_blend_attachment_states = [vk::PipelineColorBlendAttachmentState::builder()
-            .blend_enable(false)
-            .color_write_mask(vk::ColorComponentFlags::RGBA)
-            .src_color_blend_factor(vk::BlendFactor::ONE)
-            .dst_color_blend_factor(vk::BlendFactor::ZERO)
-            .color_blend_op(vk::BlendOp::ADD)
-            .src_alpha_blend_factor(vk::BlendFactor::ONE)
-            .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-            .alpha_blend_op(vk::BlendOp::ADD)
-            .build()];
+        let color_blend_attachment_states = [vk::PipelineColorBlendAttachmentState {
+            blend_enable: 0,
+            src_color_blend_factor: vk::BlendFactor::SRC_ALPHA,
+            dst_color_blend_factor: vk::BlendFactor::ONE_MINUS_DST_COLOR,
+            color_blend_op: vk::BlendOp::ADD,
+            src_alpha_blend_factor: vk::BlendFactor::ONE,
+            dst_alpha_blend_factor: vk::BlendFactor::ZERO,
+            alpha_blend_op: vk::BlendOp::ADD,
+            color_write_mask: vk::ColorComponentFlags::RGBA,
+        }];
         let color_blend_state = vk::PipelineColorBlendStateCreateInfo::builder()
             .logic_op_enable(false)
             .logic_op(vk::LogicOp::COPY)
@@ -120,7 +113,7 @@ mod _graphics {
 
         let graphic_pipeline_create_infos = [vk::GraphicsPipelineCreateInfo::builder()
             .stages(&shader_stages)
-            .vertex_input_state(&vertex_input_state_create_info)
+            .vertex_input_state(&vertex_input_state_info)
             .input_assembly_state(&vertex_input_assembly_state_info)
             .viewport_state(&viewport_state_create_info)
             .rasterization_state(&rasterization_state_create_info)
