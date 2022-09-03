@@ -11,5 +11,5 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
 ## Building
 For building the code in this project, it is recommended to use docker with `make docker-build`. \
 When building the codes with docker, it is highly recommended to use [docker-rootless](https://docs.docker.com/engine/security/rootless/). \
-If you build using standard docker (not rootless docker), the built binary might end up \
+If you build using standard docker (not rootless docker), the built binary might end up
 with root user ownership. (which sucks BTW when you want to build, run, remove the file)
