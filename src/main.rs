@@ -19,7 +19,7 @@ fn main() {
         .with_min_inner_size(PhysicalSize::new(MINIMAL_WIDTH, MINIMAL_HEIGHT))
         .build(&event_loop)
         .unwrap();
-    let app = HelloTriangleTriangle::new();
+    let app = HelloTriangleTriangle::new(&window);
 
     // Application loop
     event_loop.run(move |event, _, control_flow| {
