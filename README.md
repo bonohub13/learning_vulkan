@@ -6,4 +6,4 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
 - [chapter 0](https://github.com/bonohub13/learning_vulkan/tree/chapter_0)
     - [Base Code](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Base_code)
 - [chapter 1](https://github.com/bonohub13/learning_vulkan/tree/chapter_1)
-    - [Base Code](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Instance)
+    - [Instance](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Instance)
