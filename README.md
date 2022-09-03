@@ -7,6 +7,8 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
     - [Base Code](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Base_code)
 - [chapter 1](https://github.com/bonohub13/learning_vulkan/tree/chapter_1)
     - [Instance](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Instance)
+- [chapter 2](https://github.com/bonohub13/learning_vulkan/tree/chapter_2)
+    - [Validation Layers](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers)
 
 ## Building
 For building the code in this project, it is recommended to use docker with `make docker-build`. \
