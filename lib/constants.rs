@@ -1,4 +1,5 @@
 mod _constants {
+    use crate::VkValidationInfo;
     use ash::vk::make_api_version;
 
     pub const WIDTH: u32 = 800;
@@ -12,7 +13,10 @@ mod _constants {
     pub const ENGINE_NAME: &str = "No Engine";
     pub const ENGINE_VERSION: u32 = make_api_version(0, 1, 0, 0);
 
-    pub const VK_VALIDATION_LAYER_NAMES: [&str; 1] = ["VK_LAYER_KHRONOS_validation"];
+    pub const VK_VALIDATION_LAYER_NAMES: VkValidationInfo = VkValidationInfo {
+        is_enable: true,
+        required_validation_layer: ["VK_LAYER_KHRONOS_validation"],
+    };
 }
 
 pub use _constants::{HEIGHT, WIDTH};
