@@ -36,16 +36,22 @@ run:
 run-win64:
 	.\bin\x86_64-pc-windows-gnu\learning_vulkan.exe
 
+rebuild-win64-image:
+	docker build . -t ofv/windows -f docker/Dockerfile.windows --no-cache
+
+rebuild-linux-image:
+	cp Cargo.toml docker
+	docker build . -t ofv/linux -f docker/Dockerfile.linux --no-cache
+	rm docker/Cargo.toml
+
+rebuild-all-images: rebuild-linux-image rebuild-win64-image
+
 docker-build: clean
 	mkdir -p bin
-	cp Cargo.toml docker
-	docker build . -t ofv/linux -f docker/Dockerfile.linux
 	docker run --rm -it -v $(shell pwd):/app ofv/linux
-	rm docker/Cargo.toml
 	cp ./target/debug/learning_vulkan bin
 
 docker-cross-compile-win64: clean
 	mkdir -p bin/x86_64-pc-windows-gnu
-	docker build . -t ofv/windows -f docker/Dockerfile.windows
 	docker run --rm -it -v $(shell pwd):/app ofv/windows
 	cp ./target/x86_64-pc-windows-gnu/debug/learning_vulkan.exe bin/x86_64-pc-windows-gnu
