@@ -17,25 +17,42 @@ mod _triangle {
         KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn, KhrPortabilitySubsetFn,
     };
 
+    struct QueueFamilyIndices {
+        graphics_family: Option<u32>,
+    }
+
+    impl QueueFamilyIndices {
+        pub fn is_complete(&self) -> bool {
+            self.graphics_family.is_some()
+        }
+    }
+
     pub struct HelloTriangleTriangle {
         _entry: Entry,
         instance: Instance,
+
         debug_utils_loader: DebugUtils,
         debug_callback: vk::DebugUtilsMessengerEXT,
+
+        physical_device: vk::PhysicalDevice,
     }
 
     impl HelloTriangleTriangle {
         pub fn new(window: &Window) -> Self {
             let entry = Entry::linked();
             let instance = Self::create_instance(&entry, window);
+
             let (debug_utils_loader, debug_callback) =
-                Self::setup_debug_callback(&entry, &instance);
+                vk_debug::setup_debug_callback(&entry, &instance);
+
+            let physical_device = Self::pick_physical_device(&instance);
 
             Self {
                 _entry: entry,
                 instance,
                 debug_utils_loader,
                 debug_callback,
+                physical_device,
             }
         }
 
@@ -106,35 +123,58 @@ mod _triangle {
             }
         }
 
-        fn setup_debug_callback(
-            entry: &Entry,
-            instance: &Instance,
-        ) -> (DebugUtils, vk::DebugUtilsMessengerEXT) {
-            let debug_utils_loader = DebugUtils::new(&entry, &instance);
+        fn pick_physical_device(instance: &Instance) -> vk::PhysicalDevice {
+            let physical_devices = unsafe {
+                instance
+                    .enumerate_physical_devices()
+                    .expect("failed to find GPUs with Vulkan support!")
+            };
 
-            if VK_VALIDATION_LAYER_NAMES.is_enable {
-                let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
-                    .message_severity(
-                        vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
-                            | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
-                            | vk::DebugUtilsMessageSeverityFlagsEXT::INFO,
-                    )
-                    .message_type(
-                        vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
-                            | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
-                            | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
-                    )
-                    .pfn_user_callback(Some(vk_debug::vulkan_debug_callback));
-                let debug_callback = unsafe {
-                    debug_utils_loader
-                        .create_debug_utils_messenger(&debug_info, None)
-                        .expect("failed to set up debug messenger!")
-                };
-
-                (debug_utils_loader, debug_callback)
-            } else {
-                (debug_utils_loader, vk::DebugUtilsMessengerEXT::null())
+            let mut result = None;
+            for &physical_device in physical_devices.iter() {
+                if Self::is_device_suitable(instance, physical_device) && result.is_none() {
+                    result = Some(physical_device)
+                }
             }
+
+            match result {
+                None => panic!("failed to find a suitable GPU!"),
+                Some(physical_device) => physical_device,
+            }
+        }
+
+        fn is_device_suitable(instance: &Instance, physical_device: vk::PhysicalDevice) -> bool {
+            let indices = Self::find_queue_family(instance, physical_device);
+
+            indices.is_complete()
+        }
+
+        fn find_queue_family(
+            instance: &Instance,
+            physical_device: vk::PhysicalDevice,
+        ) -> QueueFamilyIndices {
+            let queue_families =
+                unsafe { instance.get_physical_device_queue_family_properties(physical_device) };
+            let mut queue_family_indices = QueueFamilyIndices {
+                graphics_family: None,
+            };
+
+            let mut index: u32 = 0;
+            for queue_family in queue_families.iter() {
+                if queue_family.queue_count > 0
+                    && queue_family.queue_flags.contains(vk::QueueFlags::GRAPHICS)
+                {
+                    queue_family_indices.graphics_family = Some(index)
+                }
+
+                if queue_family_indices.is_complete() {
+                    break;
+                }
+
+                index += 1;
+            }
+
+            queue_family_indices
         }
     }
 

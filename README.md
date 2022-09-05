@@ -9,6 +9,8 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
     - [Instance](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Instance)
 - [chapter 2](https://github.com/bonohub13/learning_vulkan/tree/chapter_2)
     - [Validation Layers](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers)
+- [chapter 3](https://github.com/bonohub13/learning_vulkan/tree/chapter_3)
+    - [Physical devices and queue families](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families)
 
 ## Building
 For building the code in this project, it is recommended to use docker with `make docker-build`. \

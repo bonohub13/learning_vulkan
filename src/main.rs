@@ -46,7 +46,10 @@ fn main() {
             }
             // Main event for app
             Event::MainEventsCleared => {
-                // TODO Render here!
+                window.request_redraw();
+            }
+            Event::RedrawRequested(_window_id) => {
+                // TODO Draw frame here!
             }
             // Some other random events
             _ => (),

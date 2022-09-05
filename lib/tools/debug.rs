@@ -1,6 +1,6 @@
 mod _debug {
     use crate::constants::VK_VALIDATION_LAYER_NAMES;
-    use ash::{vk, Entry};
+    use ash::{extensions::ext::DebugUtils, vk, Entry, Instance};
     use std::ffi::CStr;
     use std::os::raw::c_void;
 
@@ -69,6 +69,37 @@ mod _debug {
 
         true
     }
+
+    pub fn setup_debug_callback(
+        entry: &Entry,
+        instance: &Instance,
+    ) -> (DebugUtils, vk::DebugUtilsMessengerEXT) {
+        let debug_utils_loader = DebugUtils::new(&entry, &instance);
+
+        if VK_VALIDATION_LAYER_NAMES.is_enable {
+            let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
+                .message_severity(
+                    vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
+                        | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
+                        | vk::DebugUtilsMessageSeverityFlagsEXT::INFO,
+                )
+                .message_type(
+                    vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
+                        | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
+                        | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
+                )
+                .pfn_user_callback(Some(vulkan_debug_callback));
+            let debug_callback = unsafe {
+                debug_utils_loader
+                    .create_debug_utils_messenger(&debug_info, None)
+                    .expect("failed to set up debug messenger!")
+            };
+
+            (debug_utils_loader, debug_callback)
+        } else {
+            (debug_utils_loader, vk::DebugUtilsMessengerEXT::null())
+        }
+    }
 }
 
-pub use _debug::{check_validation_layer_support, vulkan_debug_callback};
+pub use _debug::{check_validation_layer_support, setup_debug_callback, vulkan_debug_callback};
