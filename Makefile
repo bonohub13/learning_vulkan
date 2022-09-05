@@ -38,8 +38,10 @@ run-win64:
 
 docker-build: clean
 	mkdir -p bin
+	cp Cargo.toml docker
 	docker build . -t ofv/linux -f docker/Dockerfile.linux
 	docker run --rm -it -v $(shell pwd):/app ofv/linux
+	rm docker/Cargo.toml
 	cp ./target/debug/learning_vulkan bin
 
 docker-cross-compile-win64: clean
