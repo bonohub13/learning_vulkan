@@ -15,7 +15,7 @@ mod _constants {
 
     pub const VK_VALIDATION_LAYER_NAMES: VkValidationInfo = VkValidationInfo {
         is_enable: true,
-        required_validation_layer: ["VK_LAYER_KHRONOS_validation"],
+        required_validation_layers: ["VK_LAYER_KHRONOS_validation"],
     };
 }
 

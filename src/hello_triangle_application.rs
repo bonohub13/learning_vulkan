@@ -7,7 +7,7 @@ mod _triangle {
         tools::debug as vk_debug,
     };
 
-    use ash::{extensions::ext::DebugUtils, vk, Entry, Instance};
+    use ash::{extensions::ext::DebugUtils, vk, Device, Entry, Instance};
     use std::ffi::{CStr, CString};
     use std::os::raw::c_char;
     use winit::window::Window;
@@ -17,16 +17,6 @@ mod _triangle {
         KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn, KhrPortabilitySubsetFn,
     };
 
-    struct QueueFamilyIndices {
-        graphics_family: Option<u32>,
-    }
-
-    impl QueueFamilyIndices {
-        pub fn is_complete(&self) -> bool {
-            self.graphics_family.is_some()
-        }
-    }
-
     pub struct HelloTriangleTriangle {
         _entry: Entry,
         instance: Instance,
@@ -35,6 +25,8 @@ mod _triangle {
         debug_callback: vk::DebugUtilsMessengerEXT,
 
         physical_device: vk::PhysicalDevice,
+        device: Device,
+        _graphics_queue: vk::Queue,
     }
 
     impl HelloTriangleTriangle {
@@ -45,7 +37,8 @@ mod _triangle {
             let (debug_utils_loader, debug_callback) =
                 vk_debug::setup_debug_callback(&entry, &instance);
 
-            let physical_device = Self::pick_physical_device(&instance);
+            let physical_device = vk_utils::device::pick_physical_device(&instance);
+            let (device, graphics_queue) = Self::create_logical_device(&instance, physical_device);
 
             Self {
                 _entry: entry,
@@ -53,6 +46,8 @@ mod _triangle {
                 debug_utils_loader,
                 debug_callback,
                 physical_device,
+                device,
+                _graphics_queue: graphics_queue,
             }
         }
 
@@ -81,7 +76,7 @@ mod _triangle {
             }
 
             let required_validation_layer_names: Vec<CString> = VK_VALIDATION_LAYER_NAMES
-                .required_validation_layer
+                .required_validation_layers
                 .iter()
                 .map(|layer_name| CString::new(*layer_name).unwrap())
                 .collect();
@@ -123,68 +118,64 @@ mod _triangle {
             }
         }
 
-        fn pick_physical_device(instance: &Instance) -> vk::PhysicalDevice {
-            let physical_devices = unsafe {
-                instance
-                    .enumerate_physical_devices()
-                    .expect("failed to find GPUs with Vulkan support!")
-            };
-
-            let mut result = None;
-            for &physical_device in physical_devices.iter() {
-                if Self::is_device_suitable(instance, physical_device) && result.is_none() {
-                    result = Some(physical_device)
-                }
-            }
-
-            match result {
-                None => panic!("failed to find a suitable GPU!"),
-                Some(physical_device) => physical_device,
-            }
-        }
-
-        fn is_device_suitable(instance: &Instance, physical_device: vk::PhysicalDevice) -> bool {
-            let indices = Self::find_queue_family(instance, physical_device);
-
-            indices.is_complete()
-        }
-
-        fn find_queue_family(
+        fn create_logical_device(
             instance: &Instance,
             physical_device: vk::PhysicalDevice,
-        ) -> QueueFamilyIndices {
-            let queue_families =
-                unsafe { instance.get_physical_device_queue_family_properties(physical_device) };
-            let mut queue_family_indices = QueueFamilyIndices {
-                graphics_family: None,
+        ) -> (ash::Device, vk::Queue) {
+            let indices = vk_utils::device::find_queue_family(instance, physical_device);
+
+            let queue_priorities = [1.0_f32];
+            let queue_create_infos = [vk::DeviceQueueCreateInfo::builder()
+                .queue_family_index(indices.graphics_family.unwrap())
+                .queue_priorities(&queue_priorities)
+                .build()];
+
+            let device_features = vk::PhysicalDeviceFeatures::default();
+
+            let required_validation_layers_raw: Vec<CString> = VK_VALIDATION_LAYER_NAMES
+                .required_validation_layers
+                .iter()
+                .map(|&layer_name| CString::new(layer_name).unwrap())
+                .collect();
+            let enabled_layer_names: Vec<*const c_char> = required_validation_layers_raw
+                .iter()
+                .map(|layer_name| layer_name.as_ptr())
+                .collect();
+
+            let create_info = if VK_VALIDATION_LAYER_NAMES.is_enable {
+                vk::DeviceCreateInfo::builder()
+                    .queue_create_infos(&queue_create_infos)
+                    .enabled_features(&device_features)
+                    .enabled_layer_names(&enabled_layer_names)
+            } else {
+                vk::DeviceCreateInfo::builder()
+                    .queue_create_infos(&queue_create_infos)
+                    .enabled_features(&device_features)
             };
 
-            let mut index: u32 = 0;
-            for queue_family in queue_families.iter() {
-                if queue_family.queue_count > 0
-                    && queue_family.queue_flags.contains(vk::QueueFlags::GRAPHICS)
-                {
-                    queue_family_indices.graphics_family = Some(index)
-                }
+            let device = unsafe {
+                instance
+                    .create_device(physical_device, &create_info, None)
+                    .expect("failed to create logical device!")
+            };
 
-                if queue_family_indices.is_complete() {
-                    break;
-                }
+            let graphics_queue =
+                unsafe { device.get_device_queue(indices.graphics_family.unwrap(), 0) };
 
-                index += 1;
-            }
-
-            queue_family_indices
+            (device, graphics_queue)
         }
     }
 
     impl Drop for HelloTriangleTriangle {
         fn drop(&mut self) {
             unsafe {
+                self.device.destroy_device(None);
+
                 if VK_VALIDATION_LAYER_NAMES.is_enable {
                     self.debug_utils_loader
                         .destroy_debug_utils_messenger(self.debug_callback, None);
                 }
+
                 self.instance.destroy_instance(None);
             }
         }

@@ -5,6 +5,8 @@ RUN apt install -y \
     cmake \
     libvulkan-dev
 
+RUN rustup update
+
 WORKDIR /app
 
 COPY Cargo.toml ./

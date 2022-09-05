@@ -49,7 +49,7 @@ mod _debug {
             }
         }
 
-        for required_layer_name in VK_VALIDATION_LAYER_NAMES.required_validation_layer.iter() {
+        for required_layer_name in VK_VALIDATION_LAYER_NAMES.required_validation_layers.iter() {
             let mut is_layer_found = false;
 
             for layer_property in layer_properties.iter() {
