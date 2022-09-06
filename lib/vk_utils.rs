@@ -10,16 +10,25 @@ pub struct VkValidationInfo {
     pub required_validation_layers: [&'static str; 1],
 }
 
+pub struct VkSurfaceInfo {
+    pub surface_loader: ash::extensions::khr::Surface,
+    pub surface: ash::vk::SurfaceKHR,
+}
+
 pub struct QueueFamilyIndices {
     pub graphics_family: Option<u32>,
+    pub present_family: Option<u32>,
 }
 
 impl QueueFamilyIndices {
-    pub fn new(graphics_family: Option<u32>) -> Self {
-        Self { graphics_family }
+    pub fn new(graphics_family: Option<u32>, present_family: Option<u32>) -> Self {
+        Self {
+            graphics_family,
+            present_family,
+        }
     }
 
     pub fn is_complete(&self) -> bool {
-        self.graphics_family.is_some()
+        self.graphics_family.is_some() && self.present_family.is_some()
     }
 }

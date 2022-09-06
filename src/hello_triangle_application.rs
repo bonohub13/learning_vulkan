@@ -7,7 +7,10 @@ mod _triangle {
         tools::debug as vk_debug,
     };
 
-    use ash::{extensions::ext::DebugUtils, vk, Device, Entry, Instance};
+    use ash::{
+        extensions::{ext::DebugUtils, khr::Surface},
+        vk, Device, Entry, Instance,
+    };
     use std::ffi::{CStr, CString};
     use std::os::raw::c_char;
     use winit::window::Window;
@@ -24,9 +27,14 @@ mod _triangle {
         debug_utils_loader: DebugUtils,
         debug_callback: vk::DebugUtilsMessengerEXT,
 
-        physical_device: vk::PhysicalDevice,
+        surface_loader: Surface,
+        surface: vk::SurfaceKHR,
+
+        _physical_device: vk::PhysicalDevice,
         device: Device,
+
         _graphics_queue: vk::Queue,
+        _present_queue: vk::Queue,
     }
 
     impl HelloTriangleTriangle {
@@ -37,17 +45,32 @@ mod _triangle {
             let (debug_utils_loader, debug_callback) =
                 vk_debug::setup_debug_callback(&entry, &instance);
 
-            let physical_device = vk_utils::device::pick_physical_device(&instance);
-            let (device, graphics_queue) = Self::create_logical_device(&instance, physical_device);
+            let surface_info = Self::create_surface(&entry, &instance, window);
+
+            let physical_device = vk_utils::device::pick_physical_device(&instance, &surface_info);
+            let (device, family_indices) =
+                vk_utils::device::create_logical_device(&instance, physical_device, &surface_info);
+
+            let graphics_queue =
+                unsafe { device.get_device_queue(family_indices.graphics_family.unwrap(), 0) };
+            let present_queue =
+                unsafe { device.get_device_queue(family_indices.present_family.unwrap(), 0) };
 
             Self {
                 _entry: entry,
                 instance,
+
+                surface_loader: surface_info.surface_loader,
+                surface: surface_info.surface,
+
                 debug_utils_loader,
                 debug_callback,
-                physical_device,
+
+                _physical_device: physical_device,
                 device,
+
                 _graphics_queue: graphics_queue,
+                _present_queue: present_queue,
             }
         }
 
@@ -118,51 +141,21 @@ mod _triangle {
             }
         }
 
-        fn create_logical_device(
+        fn create_surface(
+            entry: &Entry,
             instance: &Instance,
-            physical_device: vk::PhysicalDevice,
-        ) -> (ash::Device, vk::Queue) {
-            let indices = vk_utils::device::find_queue_family(instance, physical_device);
-
-            let queue_priorities = [1.0_f32];
-            let queue_create_infos = [vk::DeviceQueueCreateInfo::builder()
-                .queue_family_index(indices.graphics_family.unwrap())
-                .queue_priorities(&queue_priorities)
-                .build()];
-
-            let device_features = vk::PhysicalDeviceFeatures::default();
-
-            let required_validation_layers_raw: Vec<CString> = VK_VALIDATION_LAYER_NAMES
-                .required_validation_layers
-                .iter()
-                .map(|&layer_name| CString::new(layer_name).unwrap())
-                .collect();
-            let enabled_layer_names: Vec<*const c_char> = required_validation_layers_raw
-                .iter()
-                .map(|layer_name| layer_name.as_ptr())
-                .collect();
-
-            let create_info = if VK_VALIDATION_LAYER_NAMES.is_enable {
-                vk::DeviceCreateInfo::builder()
-                    .queue_create_infos(&queue_create_infos)
-                    .enabled_features(&device_features)
-                    .enabled_layer_names(&enabled_layer_names)
-            } else {
-                vk::DeviceCreateInfo::builder()
-                    .queue_create_infos(&queue_create_infos)
-                    .enabled_features(&device_features)
+            window: &Window,
+        ) -> vk_utils::VkSurfaceInfo {
+            let surface = unsafe {
+                ash_window::create_surface(entry, instance, window, None)
+                    .expect("failed to create window surface!")
             };
+            let surface_loader = Surface::new(entry, instance);
 
-            let device = unsafe {
-                instance
-                    .create_device(physical_device, &create_info, None)
-                    .expect("failed to create logical device!")
-            };
-
-            let graphics_queue =
-                unsafe { device.get_device_queue(indices.graphics_family.unwrap(), 0) };
-
-            (device, graphics_queue)
+            vk_utils::VkSurfaceInfo {
+                surface_loader,
+                surface,
+            }
         }
     }
 
@@ -170,6 +163,8 @@ mod _triangle {
         fn drop(&mut self) {
             unsafe {
                 self.device.destroy_device(None);
+
+                self.surface_loader.destroy_surface(self.surface, None);
 
                 if VK_VALIDATION_LAYER_NAMES.is_enable {
                     self.debug_utils_loader
