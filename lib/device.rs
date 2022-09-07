@@ -1,6 +1,6 @@
 mod _physical_dev {
     use crate as vk_utils;
-    use crate::constants::VK_VALIDATION_LAYER_NAMES;
+    use crate::constants::{VK_DEVICE_EXTENSIONS, VK_VALIDATION_LAYER_NAMES};
 
     use ash::{vk, Instance};
 
@@ -35,8 +35,44 @@ mod _physical_dev {
         surface_info: &vk_utils::VkSurfaceInfo,
     ) -> bool {
         let indices = find_queue_family(instance, physical_device, surface_info);
+        let extensions_supported = check_device_extension_support(instance, physical_device);
+        let swap_chain_adequate = if extensions_supported {
+            let swap_chain_support =
+                crate::swapchain::query_swapchain_support(physical_device, surface_info);
 
-        indices.is_complete()
+            !(swap_chain_support.formats.is_empty() || swap_chain_support.present_modes.is_empty())
+        } else {
+            false
+        };
+
+        indices.is_complete() && extensions_supported && swap_chain_adequate
+    }
+
+    fn check_device_extension_support(
+        instance: &Instance,
+        physical_device: vk::PhysicalDevice,
+    ) -> bool {
+        use std::collections::HashSet;
+
+        let available_extensions = unsafe {
+            instance
+                .enumerate_device_extension_properties(physical_device)
+                .expect("failed to get device extension properties.")
+        };
+        let available_extension_names: Vec<String> = available_extensions
+            .iter()
+            .map(|extension| crate::tools::vk_to_string(&extension.extension_name))
+            .collect();
+        let mut required_extensions: HashSet<String> = HashSet::new();
+        for extension in VK_DEVICE_EXTENSIONS.names.iter() {
+            required_extensions.insert(extension.to_string());
+        }
+
+        for extension_name in available_extension_names.iter() {
+            required_extensions.remove(extension_name);
+        }
+
+        required_extensions.is_empty()
     }
 
     pub fn find_queue_family(
@@ -86,6 +122,9 @@ mod _physical_dev {
         physical_device: vk::PhysicalDevice,
         surface_info: &vk_utils::VkSurfaceInfo,
     ) -> (ash::Device, vk_utils::QueueFamilyIndices) {
+        use ash::extensions::khr::Swapchain;
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        use ash::vk::KhrPortabilitySubsetFn;
         use std::collections::HashSet;
 
         let indices = vk_utils::device::find_queue_family(instance, physical_device, surface_info);
@@ -117,15 +156,23 @@ mod _physical_dev {
             .map(|layer_name| layer_name.as_ptr())
             .collect();
 
+        let device_extensions = [
+            Swapchain::name().as_ptr(),
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            KhrPortabilitySubsetFn::name().as_ptr(),
+        ];
+
         let create_info = if VK_VALIDATION_LAYER_NAMES.is_enable {
             vk::DeviceCreateInfo::builder()
                 .queue_create_infos(&queue_create_infos)
                 .enabled_features(&device_features)
                 .enabled_layer_names(&enabled_layer_names)
+                .enabled_extension_names(&device_extensions)
         } else {
             vk::DeviceCreateInfo::builder()
                 .queue_create_infos(&queue_create_infos)
                 .enabled_features(&device_features)
+                .enabled_extension_names(&device_extensions)
         };
 
         let device = unsafe {

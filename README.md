@@ -15,6 +15,8 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
     - [Logical device and queues](https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Logical_device_and_queues)
 - [chapter 5](https://github.com/bonohub13/learning_vulkan/tree/chapter_5)
     - [Logical device and queues](https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Window_surface)
+- [chapter 6](https://github.com/bonohub13/learning_vulkan/tree/chapter_6)
+    - [Swap chain](https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain)
 
 ## Building
 For building the code in this project, it is recommended to use docker with `make docker-build`. \

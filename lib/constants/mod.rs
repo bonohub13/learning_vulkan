@@ -1,5 +1,5 @@
 mod _constants {
-    use crate::VkValidationInfo;
+    use crate::{VkDeviceExtension, VkValidationInfo};
     use ash::vk::make_api_version;
 
     pub const WIDTH: u32 = 800;
@@ -17,14 +17,23 @@ mod _constants {
         is_enable: true,
         required_validation_layers: ["VK_LAYER_KHRONOS_validation"],
     };
+    pub const VK_DEVICE_EXTENSIONS: VkDeviceExtension = VkDeviceExtension {
+        names: ["VK_KHR_swapchain"],
+    };
 }
 
 pub use _constants::{HEIGHT, WIDTH};
 // minimal window size
+pub use _constants::{
+    APPLICATION_NAME,    // app name
+    APPLICATION_VERSION, // app version
+};
+pub use _constants::{
+    ENGINE_NAME,    // engine name
+    ENGINE_VERSION, // engine version
+};
 pub use _constants::{MINIMAL_HEIGHT, MINIMAL_WIDTH};
-// app name and app version
-pub use _constants::{APPLICATION_NAME, APPLICATION_VERSION};
-// engine name and version
-pub use _constants::{ENGINE_NAME, ENGINE_VERSION};
-// vulkan validation layers
-pub use _constants::VK_VALIDATION_LAYER_NAMES;
+pub use _constants::{
+    VK_DEVICE_EXTENSIONS,      // vulkan device extensions
+    VK_VALIDATION_LAYER_NAMES, // vulkan validation layers
+};

@@ -2,6 +2,8 @@ pub mod constants;
 pub mod tools;
 
 pub mod device;
+pub mod surface;
+pub mod swapchain;
 
 // Types and objects made just to make things work will be under here!
 
@@ -10,9 +12,27 @@ pub struct VkValidationInfo {
     pub required_validation_layers: [&'static str; 1],
 }
 
+pub struct VkDeviceExtension {
+    pub names: [&'static str; 1],
+}
+
 pub struct VkSurfaceInfo {
     pub surface_loader: ash::extensions::khr::Surface,
     pub surface: ash::vk::SurfaceKHR,
+}
+
+pub struct VkSwapChainInfo {
+    pub swapchain_loader: ash::extensions::khr::Swapchain,
+    pub swapchain: ash::vk::SwapchainKHR,
+    pub swapchain_images: Vec<ash::vk::Image>,
+    pub swapchain_format: ash::vk::Format,
+    pub swapchain_extent: ash::vk::Extent2D,
+}
+
+pub struct VkSwapchainDetail {
+    pub capabilities: ash::vk::SurfaceCapabilitiesKHR,
+    pub formats: Vec<ash::vk::SurfaceFormatKHR>,
+    pub present_modes: Vec<ash::vk::PresentModeKHR>,
 }
 
 pub struct QueueFamilyIndices {

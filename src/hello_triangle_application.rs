@@ -8,7 +8,10 @@ mod _triangle {
     };
 
     use ash::{
-        extensions::{ext::DebugUtils, khr::Surface},
+        extensions::{
+            ext::DebugUtils,
+            khr::{Surface, Swapchain},
+        },
         vk, Device, Entry, Instance,
     };
     use std::ffi::{CStr, CString};
@@ -35,6 +38,12 @@ mod _triangle {
 
         _graphics_queue: vk::Queue,
         _present_queue: vk::Queue,
+
+        swapchain_loader: Swapchain,
+        swapchain: vk::SwapchainKHR,
+        _swapchain_images: Vec<vk::Image>,
+        _swapchain_format: vk::Format,
+        _swapchain_extent: vk::Extent2D,
     }
 
     impl HelloTriangleTriangle {
@@ -45,7 +54,7 @@ mod _triangle {
             let (debug_utils_loader, debug_callback) =
                 vk_debug::setup_debug_callback(&entry, &instance);
 
-            let surface_info = Self::create_surface(&entry, &instance, window);
+            let surface_info = vk_utils::surface::create_surface(&entry, &instance, window);
 
             let physical_device = vk_utils::device::pick_physical_device(&instance, &surface_info);
             let (device, family_indices) =
@@ -55,6 +64,14 @@ mod _triangle {
                 unsafe { device.get_device_queue(family_indices.graphics_family.unwrap(), 0) };
             let present_queue =
                 unsafe { device.get_device_queue(family_indices.present_family.unwrap(), 0) };
+
+            let swapchain_info = vk_utils::swapchain::create_swap_chain(
+                &instance,
+                &device,
+                physical_device,
+                &surface_info,
+                &family_indices,
+            );
 
             Self {
                 _entry: entry,
@@ -71,6 +88,12 @@ mod _triangle {
 
                 _graphics_queue: graphics_queue,
                 _present_queue: present_queue,
+
+                swapchain_loader: swapchain_info.swapchain_loader,
+                swapchain: swapchain_info.swapchain,
+                _swapchain_images: swapchain_info.swapchain_images,
+                _swapchain_format: swapchain_info.swapchain_format,
+                _swapchain_extent: swapchain_info.swapchain_extent,
             }
         }
 
@@ -140,28 +163,14 @@ mod _triangle {
                     .expect("failed to create instance!")
             }
         }
-
-        fn create_surface(
-            entry: &Entry,
-            instance: &Instance,
-            window: &Window,
-        ) -> vk_utils::VkSurfaceInfo {
-            let surface = unsafe {
-                ash_window::create_surface(entry, instance, window, None)
-                    .expect("failed to create window surface!")
-            };
-            let surface_loader = Surface::new(entry, instance);
-
-            vk_utils::VkSurfaceInfo {
-                surface_loader,
-                surface,
-            }
-        }
     }
 
     impl Drop for HelloTriangleTriangle {
         fn drop(&mut self) {
             unsafe {
+                self.swapchain_loader
+                    .destroy_swapchain(self.swapchain, None);
+
                 self.device.destroy_device(None);
 
                 self.surface_loader.destroy_surface(self.surface, None);
