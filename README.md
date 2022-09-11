@@ -46,9 +46,9 @@ this is using builders to mitigate any unnessesary initialization.
         make build
         ```
 - Method 2: Building with Docker Containers (Recommended)
-    1. build shaders
+    1. build shader code
         ``` bash
-        make build-shaders
+        make build-shader
         ```
     2. build the docker image
         ``` bash
