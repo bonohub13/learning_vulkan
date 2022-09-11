@@ -28,6 +28,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Image views](https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Image_views)
 - [chapter 8](https://github.com/bonohub13/learning_vulkan/tree/chapter_8)
     - [Introduction](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Introduction)
+- [chapter 9](https://github.com/bonohub13/learning_vulkan/tree/chapter_9)
+    - [Shader modules](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Shader_modules)
 
 ## Building
 For building the code in this project, it is recommended to use docker with `make docker-build`. \

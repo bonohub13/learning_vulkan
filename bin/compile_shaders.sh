@@ -34,7 +34,7 @@ compile() {
     else
         echo "$SHADER_FILES" | while read file
         do
-            out_file="$(echo "$file" | awk -F/ '{print$NF}')"
+            out_file="$(echo "$file" | awk -F/ '{print$NF}' | sed "s/\./_/g")"
 
             glslc "$file" -o "$SHADER_DIR/spv/${out_file}.spv"
         done

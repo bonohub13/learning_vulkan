@@ -74,11 +74,13 @@ mod _triangle {
                 &family_indices,
             );
 
-            let swapchain_imageviews = Self::create_image_views(
+            let swapchain_imageviews = vk_utils::swapchain::create_image_views(
                 &device,
                 swapchain_info.swapchain_format,
                 &swapchain_info.swapchain_images,
             );
+
+            let _pipeline = Self::create_graphics_pipeline(&device);
 
             Self {
                 _entry: entry,
@@ -172,45 +174,48 @@ mod _triangle {
             }
         }
 
-        fn create_image_views(
-            device: &Device,
-            surface_format: vk::Format,
-            images: &Vec<vk::Image>,
-        ) -> Vec<vk::ImageView> {
-            let swap_chain_image_views: Vec<vk::ImageView> = images
-                .iter()
-                .map(|&image| {
-                    let create_info = vk::ImageViewCreateInfo::builder()
-                        .view_type(vk::ImageViewType::TYPE_2D)
-                        .format(surface_format)
-                        .components(vk::ComponentMapping {
-                            r: vk::ComponentSwizzle::IDENTITY,
-                            g: vk::ComponentSwizzle::IDENTITY,
-                            b: vk::ComponentSwizzle::IDENTITY,
-                            a: vk::ComponentSwizzle::IDENTITY,
-                        })
-                        .subresource_range(vk::ImageSubresourceRange {
-                            aspect_mask: vk::ImageAspectFlags::COLOR,
-                            base_mip_level: 0,
-                            level_count: 1,
-                            base_array_layer: 0,
-                            layer_count: 1,
-                        })
-                        .image(image);
+        fn create_graphics_pipeline(device: &ash::Device) {
+            use std::path::Path;
 
-                    unsafe {
-                        device
-                            .create_image_view(&create_info, None)
-                            .expect("failed to create image view!")
-                    }
-                })
-                .collect();
+            let vert_shader_code =
+                vk_utils::tools::read_shader_code(Path::new("shaders/spv/hello-triangle_vert.spv"));
+            let frag_shader_code =
+                vk_utils::tools::read_shader_code(Path::new("shaders/spv/hello-triangle_frag.spv"));
 
-            swap_chain_image_views
+            let vert_shader_module = Self::create_shader_module(device, &vert_shader_code);
+            let frag_shader_module = Self::create_shader_module(device, &frag_shader_code);
+
+            let main_function_name = CString::new("main").unwrap();
+
+            let shader_stages = [
+                vk::PipelineShaderStageCreateInfo::builder()
+                    .stage(vk::ShaderStageFlags::VERTEX)
+                    .module(vert_shader_module)
+                    .name(&main_function_name)
+                    .build(),
+                vk::PipelineShaderStageCreateInfo::builder()
+                    .stage(vk::ShaderStageFlags::FRAGMENT)
+                    .module(frag_shader_module)
+                    .name(&main_function_name)
+                    .build(),
+            ];
+
+            unsafe {
+                device.destroy_shader_module(vert_shader_module, None);
+                device.destroy_shader_module(frag_shader_module, None);
+            }
         }
 
-        fn create_graphics_pipeline() {
-            // Create a logic to create graphics pipeline here
+        fn create_shader_module(device: &ash::Device, code: &Vec<u8>) -> vk::ShaderModule {
+            // convert Vec<u8> into Vec<u32>
+            let code_u32: Vec<u32> = code.iter().map(|&byte| byte as u32).collect();
+            let create_info = vk::ShaderModuleCreateInfo::builder().code(&code_u32);
+
+            unsafe {
+                device
+                    .create_shader_module(&create_info, None)
+                    .expect("failed to create shader module!")
+            }
         }
     }
 
