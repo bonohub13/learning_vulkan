@@ -31,7 +31,7 @@ cross-compile-win64: clean
 	cp ./target/x86_64-pc-windows-gnu/debug/learning_vulkan.exe bin/x86_64-pc-windows-gnu
 
 run:
-	ENABLE_VKBASALT=0 ./bin/learning_vulkan
+	ENABLE_VKBASALT=0 MANGOHUD=0 ./bin/learning_vulkan
 
 run-win64:
 	.\bin\x86_64-pc-windows-gnu\learning_vulkan.exe

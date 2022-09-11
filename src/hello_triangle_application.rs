@@ -44,6 +44,7 @@ mod _triangle {
         _swapchain_images: Vec<vk::Image>,
         _swapchain_format: vk::Format,
         _swapchain_extent: vk::Extent2D,
+        swapchain_imageviews: Vec<vk::ImageView>,
     }
 
     impl HelloTriangleTriangle {
@@ -73,6 +74,12 @@ mod _triangle {
                 &family_indices,
             );
 
+            let swapchain_imageviews = Self::create_image_views(
+                &device,
+                swapchain_info.swapchain_format,
+                &swapchain_info.swapchain_images,
+            );
+
             Self {
                 _entry: entry,
                 instance,
@@ -94,6 +101,7 @@ mod _triangle {
                 _swapchain_images: swapchain_info.swapchain_images,
                 _swapchain_format: swapchain_info.swapchain_format,
                 _swapchain_extent: swapchain_info.swapchain_extent,
+                swapchain_imageviews,
             }
         }
 
@@ -163,11 +171,52 @@ mod _triangle {
                     .expect("failed to create instance!")
             }
         }
+
+        fn create_image_views(
+            device: &Device,
+            surface_format: vk::Format,
+            images: &Vec<vk::Image>,
+        ) -> Vec<vk::ImageView> {
+            let swap_chain_image_views: Vec<vk::ImageView> = images
+                .iter()
+                .map(|&image| {
+                    let create_info = vk::ImageViewCreateInfo::builder()
+                        .view_type(vk::ImageViewType::TYPE_2D)
+                        .format(surface_format)
+                        .components(vk::ComponentMapping {
+                            r: vk::ComponentSwizzle::IDENTITY,
+                            g: vk::ComponentSwizzle::IDENTITY,
+                            b: vk::ComponentSwizzle::IDENTITY,
+                            a: vk::ComponentSwizzle::IDENTITY,
+                        })
+                        .subresource_range(vk::ImageSubresourceRange {
+                            aspect_mask: vk::ImageAspectFlags::COLOR,
+                            base_mip_level: 0,
+                            level_count: 1,
+                            base_array_layer: 0,
+                            layer_count: 1,
+                        })
+                        .image(image);
+
+                    unsafe {
+                        device
+                            .create_image_view(&create_info, None)
+                            .expect("failed to create image view!")
+                    }
+                })
+                .collect();
+
+            swap_chain_image_views
+        }
     }
 
     impl Drop for HelloTriangleTriangle {
         fn drop(&mut self) {
             unsafe {
+                for &image_view in self.swapchain_imageviews.iter() {
+                    self.device.destroy_image_view(image_view, None);
+                }
+
                 self.swapchain_loader
                     .destroy_swapchain(self.swapchain, None);
 
