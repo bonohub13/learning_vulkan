@@ -32,6 +32,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Shader modules](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Shader_modules)
 - [chapter 10](https://github.com/bonohub13/learning_vulkan/tree/chapter_10)
     - [Fixed functions](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions)
+- [chapter 11](https://github.com/bonohub13/learning_vulkan/tree/chapter_11)
+    - [Render passes](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Render_passes)
 
 ## Building
 For building the code in this project, it is recommended to use docker with `make docker-build`. \
