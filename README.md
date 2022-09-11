@@ -37,9 +37,9 @@ this is using builders to mitigate any unnessesary initialization.
 
 ## Building process
 - Method 1: Building with native packages
-    1. build shaders
+    1. build shader code
         ``` bash
-        make build-shaders
+        make build-shader
         ```
     2. build source code
         ``` bash
