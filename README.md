@@ -19,6 +19,8 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
     - [Swap chain](https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain)
 - [chapter 7](https://github.com/bonohub13/learning_vulkan/tree/chapter_7)
     - [Image views](https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Image_views)
+- [chapter 8](https://github.com/bonohub13/learning_vulkan/tree/chapter_8)
+    - [Introduction](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Introduction)
 
 ## Building
 For building the code in this project, it is recommended to use docker with `make docker-build`. \

@@ -208,6 +208,10 @@ mod _triangle {
 
             swap_chain_image_views
         }
+
+        fn create_graphics_pipeline() {
+            // Create a logic to create graphics pipeline here
+        }
     }
 
     impl Drop for HelloTriangleTriangle {
