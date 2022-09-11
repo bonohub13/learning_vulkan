@@ -11,6 +11,6 @@ WORKDIR /app
 
 COPY Cargo.toml ./
 
-RUN cargo fetch
+RUN cargo update
 
 CMD ["cargo", "build"]
