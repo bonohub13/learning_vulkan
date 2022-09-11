@@ -4,10 +4,10 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
 
 ## So, what is this all about?
 This is a direct implementation of the [Vulkan Tutorial](https://vulkan-tutorial.com) using [Ash](https://docs.rs/ash). \
-The source code is mostly based off of [unknownue's vulkan-tutorial-rust](https://github.com/unknownue/vulkan-tutorial-rust) while filling in the \
-gaps where it had problems with [Ash's example code](https://github.com/ash-rs/ash/blob/master/examples/src/lib.rs).
-While unknownue's tutorial is using raw structs to initialize create infos, this is \
-using builders to mitigate any unnessesary initialization.
+The source code is mostly based off of [unknownue's vulkan-tutorial-rust](https://github.com/unknownue/vulkan-tutorial-rust) \
+while filling in the gaps where it had problems with [Ash's example code](https://github.com/ash-rs/ash/blob/master/examples/src/lib.rs).
+While unknownue's tutorial is using raw structs to initialize create infos, \
+this is using builders to mitigate any unnessesary initialization.
 
 ## Chapters
 - [chapter 0](https://github.com/bonohub13/learning_vulkan/tree/chapter_0)
