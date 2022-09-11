@@ -35,7 +35,7 @@ this is using builders to mitigate any unnessesary initialization.
 - [chapter 11](https://github.com/bonohub13/learning_vulkan/tree/chapter_11)
     - [Render passes](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Render_passes)
 
-## Building
+## Building process
 - Method 1: Building with native packages
     1. build shaders
         ``` bash
