@@ -2,6 +2,7 @@ pub mod constants;
 pub mod tools;
 
 pub mod device;
+pub mod pipeline;
 pub mod surface;
 pub mod swapchain;
 

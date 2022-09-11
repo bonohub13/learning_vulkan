@@ -46,6 +46,8 @@ mod _triangle {
         _swapchain_extent: vk::Extent2D,
         swapchain_imageviews: Vec<vk::ImageView>,
 
+        render_pass: vk::RenderPass,
+
         pipeline_layout: vk::PipelineLayout,
     }
 
@@ -82,8 +84,12 @@ mod _triangle {
                 &swapchain_info.swapchain_images,
             );
 
-            let pipeline_layout =
-                Self::create_graphics_pipeline(&device, swapchain_info.swapchain_extent);
+            let render_pass = Self::create_render_pass(&device, swapchain_info.swapchain_format);
+
+            let pipeline_layout = vk_utils::pipeline::create_graphics_pipeline(
+                &device,
+                swapchain_info.swapchain_extent,
+            );
 
             Self {
                 _entry: entry,
@@ -107,6 +113,8 @@ mod _triangle {
                 _swapchain_format: swapchain_info.swapchain_format,
                 _swapchain_extent: swapchain_info.swapchain_extent,
                 swapchain_imageviews,
+
+                render_pass,
 
                 pipeline_layout,
             }
@@ -179,129 +187,41 @@ mod _triangle {
             }
         }
 
-        fn create_graphics_pipeline(
+        fn create_render_pass(
             device: &ash::Device,
-            swapchain_extent: vk::Extent2D,
-        ) -> vk::PipelineLayout {
-            use std::path::Path;
-
-            let vert_shader_code =
-                vk_utils::tools::read_shader_code(Path::new("shaders/spv/hello-triangle_vert.spv"));
-            let frag_shader_code =
-                vk_utils::tools::read_shader_code(Path::new("shaders/spv/hello-triangle_frag.spv"));
-
-            let vert_shader_module = Self::create_shader_module(device, &vert_shader_code);
-            let frag_shader_module = Self::create_shader_module(device, &frag_shader_code);
-
-            let main_function_name = CString::new("main").unwrap();
-
-            let shader_stages = [
-                // Vertex shader
-                vk::PipelineShaderStageCreateInfo::builder()
-                    .stage(vk::ShaderStageFlags::VERTEX)
-                    .module(vert_shader_module)
-                    .name(&main_function_name)
-                    .build(),
-                // Fragment shader
-                vk::PipelineShaderStageCreateInfo::builder()
-                    .stage(vk::ShaderStageFlags::FRAGMENT)
-                    .module(frag_shader_module)
-                    .name(&main_function_name)
-                    .build(),
-            ];
-
-            // Dynamic State
-            let dynamic_states = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
-            let dynamic_state =
-                vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_states);
-
-            // Vertex input
-            let vertex_input_info = vk::PipelineVertexInputStateCreateInfo::builder();
-
-            // Input assembly
-            let input_assembly = vk::PipelineInputAssemblyStateCreateInfo::builder()
-                .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
-                .primitive_restart_enable(false);
-
-            // Viewports and scissors
-            let viewports = [vk::Viewport::builder()
-                .x(0.0)
-                .y(0.0)
-                .width(swapchain_extent.width as f32)
-                .height(swapchain_extent.height as f32)
-                .min_depth(0.0)
-                .max_depth(1.0)
+            swapchain_format: vk::Format,
+        ) -> vk::RenderPass {
+            // Attachment description
+            let color_attachments = [vk::AttachmentDescription::builder()
+                .format(swapchain_format)
+                .samples(vk::SampleCountFlags::TYPE_1)
+                .load_op(vk::AttachmentLoadOp::CLEAR)
+                .store_op(vk::AttachmentStoreOp::STORE)
+                .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+                .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+                .initial_layout(vk::ImageLayout::UNDEFINED)
+                .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
                 .build()];
-            let scissors = [vk::Rect2D::builder()
-                .offset(vk::Offset2D { x: 0, y: 0 })
-                .extent(swapchain_extent)
+
+            // Subpasses and attachment references
+            let color_attachment_refs = [vk::AttachmentReference::builder()
+                .attachment(0)
+                .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
                 .build()];
-            let viewport_state = vk::PipelineViewportStateCreateInfo::builder()
-                .viewports(&viewports)
-                .scissors(&scissors);
-
-            // Rasterizer
-            let rasterizer = vk::PipelineRasterizationStateCreateInfo::builder()
-                .depth_clamp_enable(false)
-                .polygon_mode(vk::PolygonMode::FILL)
-                .line_width(1.0)
-                .cull_mode(vk::CullModeFlags::BACK)
-                .front_face(vk::FrontFace::CLOCKWISE)
-                .depth_bias_enable(false);
-
-            // Multisampling
-            let multisampling = vk::PipelineMultisampleStateCreateInfo::builder()
-                .sample_shading_enable(false)
-                .rasterization_samples(vk::SampleCountFlags::TYPE_1)
-                .min_sample_shading(1.0) // Optional
-                .alpha_to_coverage_enable(false) // Optional
-                .alpha_to_one_enable(false); // Optional
-
-            // Depth and stencil testing
-            // Skipping...
-
-            // Color blending
-            let color_blend_attachments = [vk::PipelineColorBlendAttachmentState::builder()
-                .color_write_mask(vk::ColorComponentFlags::RGBA)
-                .blend_enable(false)
-                .src_color_blend_factor(vk::BlendFactor::ONE) // Optional
-                .dst_color_blend_factor(vk::BlendFactor::ZERO) // Optional
-                .color_blend_op(vk::BlendOp::ADD) // Optional
-                .src_alpha_blend_factor(vk::BlendFactor::ONE) // Optional
-                .dst_alpha_blend_factor(vk::BlendFactor::ZERO) // Optional
-                .alpha_blend_op(vk::BlendOp::ADD) // Optional
+            let subpasses = [vk::SubpassDescription::builder()
+                .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+                .color_attachments(&color_attachment_refs)
                 .build()];
-            let color_blending = vk::PipelineColorBlendStateCreateInfo::builder()
-                .logic_op_enable(false)
-                .logic_op(vk::LogicOp::COPY) // Optional
-                .attachments(&color_blend_attachments)
-                .blend_constants([0.0, 0.0, 0.0, 0.0]); // Optional
 
-            // Pipeline layout
-            let pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder();
-            let pipeline_layout = unsafe {
-                device
-                    .create_pipeline_layout(&pipeline_layout_info, None)
-                    .expect("failed to create pipeline layout!")
-            };
-
-            unsafe {
-                device.destroy_shader_module(vert_shader_module, None);
-                device.destroy_shader_module(frag_shader_module, None);
-            }
-
-            pipeline_layout
-        }
-
-        fn create_shader_module(device: &ash::Device, code: &Vec<u8>) -> vk::ShaderModule {
-            // convert Vec<u8> into Vec<u32>
-            let code_u32: Vec<u32> = code.iter().map(|&byte| byte as u32).collect();
-            let create_info = vk::ShaderModuleCreateInfo::builder().code(&code_u32);
+            // Render pass
+            let render_pass_info = vk::RenderPassCreateInfo::builder()
+                .attachments(&color_attachments)
+                .subpasses(&subpasses);
 
             unsafe {
                 device
-                    .create_shader_module(&create_info, None)
-                    .expect("failed to create shader module!")
+                    .create_render_pass(&render_pass_info, None)
+                    .expect("failed to create render pass!")
             }
         }
     }
@@ -311,6 +231,8 @@ mod _triangle {
             unsafe {
                 self.device
                     .destroy_pipeline_layout(self.pipeline_layout, None);
+
+                self.device.destroy_render_pass(self.render_pass, None);
 
                 for &image_view in self.swapchain_imageviews.iter() {
                     self.device.destroy_image_view(image_view, None);
