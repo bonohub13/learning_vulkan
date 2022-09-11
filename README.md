@@ -36,7 +36,30 @@ this is using builders to mitigate any unnessesary initialization.
     - [Render passes](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Render_passes)
 
 ## Building
-For building the code in this project, it is recommended to use docker with `make docker-build`. \
+- Method 1: Building with native packages
+    1. build shaders
+        ``` bash
+        make build-shaders
+        ```
+    2. build source code
+        ``` bash
+        make build
+        ```
+- Method 2: Building with Docker Containers (Recommended)
+    1. build shaders
+        ``` bash
+        make build-shaders
+        ```
+    2. build the docker image
+        ``` bash
+        make rebuild-linux-image
+        ```
+    3. build source code
+        ``` bash
+        make docker-build
+        ```
+
+### Warning when building with Docker Containers
 When building the codes with docker, it is highly recommended to use [docker-rootless](https://docs.docker.com/engine/security/rootless/). \
 If you build using standard docker (not rootless docker), the built binary might end up
 with root user ownership. (which sucks BTW when you want to build, run, remove the file)
