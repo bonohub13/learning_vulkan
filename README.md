@@ -35,6 +35,14 @@ this is using builders to mitigate any unnessesary initialization.
 - [chapter 11](https://github.com/bonohub13/learning_vulkan/tree/chapter_11)
     - [Render passes](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Render_passes)
 
+## Fatal commits
+- September 13, 2022
+    - Reverted ash (main branch) to Chapter 11 due fatal bug in code. \
+    (It's REALLY bad. Straight up core dumps)
+    - If you want check the source code if individual chapters later than \
+    chapter 11, the branches are still up. \
+    (If the bug is patched up, it will be applied to later chapters.)
+
 ## Building process
 - Method 1: Building with native packages
     1. build shader code
