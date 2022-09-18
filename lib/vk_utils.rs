@@ -3,6 +3,7 @@ pub mod tools;
 
 pub mod device;
 pub mod pipeline;
+pub mod render_pass;
 pub mod surface;
 pub mod swapchain;
 

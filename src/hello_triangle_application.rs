@@ -46,6 +46,7 @@ mod _triangle {
         _swapchain_format: vk::Format,
         _swapchain_extent: vk::Extent2D,
         swapchain_imageviews: Vec<vk::ImageView>,
+        swapchain_framebuffers: Vec<vk::Framebuffer>,
 
         render_pass: vk::RenderPass,
 
@@ -86,12 +87,20 @@ mod _triangle {
                 &swapchain_info.swapchain_images,
             );
 
-            let render_pass = Self::create_render_pass(&device, swapchain_info.swapchain_format);
+            let render_pass =
+                vk_utils::render_pass::create_render_pass(&device, swapchain_info.swapchain_format);
 
             let (graphics_pipeline, pipeline_layout) = vk_utils::pipeline::create_graphics_pipeline(
                 &device,
                 swapchain_info.swapchain_extent,
                 render_pass.clone(),
+            );
+
+            let swapchain_framebuffers = Self::create_framebuffers(
+                &device,
+                render_pass,
+                &swapchain_imageviews,
+                &swapchain_info.swapchain_extent,
             );
 
             Self {
@@ -116,6 +125,7 @@ mod _triangle {
                 _swapchain_format: swapchain_info.swapchain_format,
                 _swapchain_extent: swapchain_info.swapchain_extent,
                 swapchain_imageviews,
+                swapchain_framebuffers,
 
                 render_pass,
 
@@ -191,48 +201,40 @@ mod _triangle {
             }
         }
 
-        fn create_render_pass(
+        fn create_framebuffers(
             device: &ash::Device,
-            swapchain_format: vk::Format,
-        ) -> vk::RenderPass {
-            // Attachment description
-            let color_attachments = [vk::AttachmentDescription::builder()
-                .format(swapchain_format)
-                .samples(vk::SampleCountFlags::TYPE_1)
-                .load_op(vk::AttachmentLoadOp::CLEAR)
-                .store_op(vk::AttachmentStoreOp::STORE)
-                .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-                .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-                .initial_layout(vk::ImageLayout::UNDEFINED)
-                .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-                .build()];
-
-            // Subpasses and attachment references
-            let color_attachment_refs = [vk::AttachmentReference::builder()
-                .attachment(0)
-                .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                .build()];
-            let subpasses = [vk::SubpassDescription::builder()
-                .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-                .color_attachments(&color_attachment_refs)
-                .build()];
-
-            // Render pass
-            let render_pass_info = vk::RenderPassCreateInfo::builder()
-                .attachments(&color_attachments)
-                .subpasses(&subpasses);
-
-            unsafe {
-                device
-                    .create_render_pass(&render_pass_info, None)
-                    .expect("failed to create render pass!")
-            }
+            render_pass: vk::RenderPass,
+            image_views: &Vec<vk::ImageView>,
+            swapchain_extent: &vk::Extent2D,
+        ) -> Vec<vk::Framebuffer> {
+            // Framebuffers
+            image_views
+                .iter()
+                .map(|&image_view| {
+                    let attachments = [image_view];
+                    let framebuffer_info = vk::FramebufferCreateInfo::builder()
+                        .render_pass(render_pass)
+                        .attachments(&attachments)
+                        .width(swapchain_extent.width)
+                        .height(swapchain_extent.height)
+                        .layers(1);
+                    unsafe {
+                        device
+                            .create_framebuffer(&framebuffer_info, None)
+                            .expect("failed to create framebuffer!")
+                    }
+                })
+                .collect()
         }
     }
 
     impl Drop for HelloTriangleTriangle {
         fn drop(&mut self) {
             unsafe {
+                for &framebuffer in self.swapchain_framebuffers.iter() {
+                    self.device.destroy_framebuffer(framebuffer, None);
+                }
+
                 self.device.destroy_pipeline(self.graphics_pipeline, None);
                 self.device
                     .destroy_pipeline_layout(self.pipeline_layout, None);
