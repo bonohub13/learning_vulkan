@@ -2,6 +2,7 @@ pub mod constants;
 pub mod tools;
 
 pub mod device;
+pub mod framebuffer;
 pub mod pipeline;
 pub mod render_pass;
 pub mod surface;
