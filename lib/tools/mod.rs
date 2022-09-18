@@ -22,5 +22,7 @@ pub fn read_shader_code(shader_path: &std::path::Path) -> Vec<u8> {
     let spv_file =
         File::open(shader_path).expect(&format!("Failed to find spv file at {:?}", shader_path));
 
-    spv_file.bytes().filter_map(|byte| byte.ok()).collect()
+    let byte_codes: Vec<u8> = spv_file.bytes().filter_map(|byte| byte.ok()).collect();
+
+    byte_codes
 }

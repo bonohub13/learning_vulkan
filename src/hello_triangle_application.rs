@@ -4,6 +4,7 @@ mod _triangle {
             APPLICATION_NAME, APPLICATION_VERSION, ENGINE_NAME, ENGINE_VERSION,
             VK_VALIDATION_LAYER_NAMES,
         },
+        device::create_logical_device,
         tools::debug as vk_debug,
     };
 
@@ -49,6 +50,7 @@ mod _triangle {
         render_pass: vk::RenderPass,
 
         pipeline_layout: vk::PipelineLayout,
+        graphics_pipeline: vk::Pipeline,
     }
 
     impl HelloTriangleTriangle {
@@ -63,7 +65,7 @@ mod _triangle {
 
             let physical_device = vk_utils::device::pick_physical_device(&instance, &surface_info);
             let (device, family_indices) =
-                vk_utils::device::create_logical_device(&instance, physical_device, &surface_info);
+                create_logical_device(&instance, physical_device, &surface_info);
 
             let graphics_queue =
                 unsafe { device.get_device_queue(family_indices.graphics_family.unwrap(), 0) };
@@ -86,9 +88,10 @@ mod _triangle {
 
             let render_pass = Self::create_render_pass(&device, swapchain_info.swapchain_format);
 
-            let pipeline_layout = vk_utils::pipeline::create_graphics_pipeline(
+            let (graphics_pipeline, pipeline_layout) = vk_utils::pipeline::create_graphics_pipeline(
                 &device,
                 swapchain_info.swapchain_extent,
+                render_pass.clone(),
             );
 
             Self {
@@ -117,6 +120,7 @@ mod _triangle {
                 render_pass,
 
                 pipeline_layout,
+                graphics_pipeline,
             }
         }
 
@@ -229,6 +233,7 @@ mod _triangle {
     impl Drop for HelloTriangleTriangle {
         fn drop(&mut self) {
             unsafe {
+                self.device.destroy_pipeline(self.graphics_pipeline, None);
                 self.device
                     .destroy_pipeline_layout(self.pipeline_layout, None);
 

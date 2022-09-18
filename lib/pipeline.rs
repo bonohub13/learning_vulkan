@@ -7,7 +7,8 @@ mod _pipeline {
     pub fn create_graphics_pipeline(
         device: &ash::Device,
         swapchain_extent: vk::Extent2D,
-    ) -> vk::PipelineLayout {
+        render_pass: vk::RenderPass,
+    ) -> (vk::Pipeline, vk::PipelineLayout) {
         use std::path::Path;
 
         let vert_shader_code =
@@ -110,18 +111,41 @@ mod _pipeline {
                 .expect("failed to create pipeline layout!")
         };
 
+        // Conclusion
+        let pipeline_infos = [vk::GraphicsPipelineCreateInfo::builder()
+            .stages(&shader_stages)
+            .vertex_input_state(&vertex_input_info)
+            .input_assembly_state(&input_assembly)
+            .viewport_state(&viewport_state)
+            .rasterization_state(&rasterizer)
+            .multisample_state(&multisampling)
+            .color_blend_state(&color_blending)
+            .dynamic_state(&dynamic_state)
+            .layout(pipeline_layout)
+            .render_pass(render_pass)
+            .subpass(0)
+            .build()];
+        let graphics_pipeline = unsafe {
+            device
+                .create_graphics_pipelines(vk::PipelineCache::null(), &pipeline_infos, None)
+                .expect("failed to create graphics pipeline!")
+        };
+
         unsafe {
             device.destroy_shader_module(vert_shader_module, None);
             device.destroy_shader_module(frag_shader_module, None);
         }
 
-        pipeline_layout
+        (graphics_pipeline[0], pipeline_layout)
     }
 
     fn create_shader_module(device: &ash::Device, code: &Vec<u8>) -> vk::ShaderModule {
-        // convert Vec<u8> into Vec<u32>
-        let code_u32: Vec<u32> = code.iter().map(|&byte| byte as u32).collect();
-        let create_info = vk::ShaderModuleCreateInfo::builder().code(&code_u32);
+        // FIXED: Major bug when creating shader module!
+        let create_info = vk::ShaderModuleCreateInfo {
+            code_size: code.len(),
+            p_code: code.as_ptr() as *const u32,
+            ..Default::default()
+        };
 
         unsafe {
             device

@@ -47,9 +47,11 @@ mod _swapchain {
             crate::surface::choose_swap_present_mode(&swap_chain_support.present_modes);
         let extent = crate::surface::choose_swap_extent(&swap_chain_support.capabilities);
 
-        let image_count = if swap_chain_support.capabilities.min_image_count > 0 {
-            (swap_chain_support.capabilities.min_image_count + 1)
-                .min(swap_chain_support.capabilities.max_image_count)
+        let image_count = if swap_chain_support.capabilities.max_image_count > 0
+            && (swap_chain_support.capabilities.min_image_count + 1)
+                > swap_chain_support.capabilities.max_image_count
+        {
+            swap_chain_support.capabilities.max_image_count
         } else {
             swap_chain_support.capabilities.min_image_count + 1
         };

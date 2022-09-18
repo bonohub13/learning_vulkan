@@ -34,6 +34,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Fixed functions](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions)
 - [chapter 11](https://github.com/bonohub13/learning_vulkan/tree/chapter_11)
     - [Render passes](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Render_passes)
+- [chapter 12](https://github.com/bonohub13/learning_vulkan/tree/chapter_12)
+    - [Conclusion](https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Conclusion)
 
 ## Fatal commits
 - September 13, 2022
