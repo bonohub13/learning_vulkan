@@ -19,7 +19,7 @@ fn main() {
         .with_min_inner_size(PhysicalSize::new(MINIMAL_WIDTH, MINIMAL_HEIGHT))
         .build(&event_loop)
         .unwrap();
-    let app = HelloTriangleTriangle::new(&window);
+    let mut app = HelloTriangleTriangle::new(&window);
 
     // Application loop
     event_loop.run(move |event, _, control_flow| {
@@ -50,6 +50,10 @@ fn main() {
             }
             Event::RedrawRequested(_window_id) => {
                 // TODO Draw frame here!
+                app.draw_frame();
+            }
+            Event::LoopDestroyed => {
+                app.wait_for_device_idle();
             }
             // Some other random events
             _ => (),

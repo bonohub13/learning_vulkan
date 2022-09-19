@@ -1,6 +1,7 @@
 pub mod constants;
 pub mod tools;
 
+pub mod command;
 pub mod device;
 pub mod framebuffer;
 pub mod pipeline;

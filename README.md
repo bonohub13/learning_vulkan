@@ -40,6 +40,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Framebuffers](https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Framebuffers)
 - [chapter 14](https://github.com/bonohub13/learning_vulkan/tree/chapter_14)
     - [Command buffers](https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Command_buffers)
+- [chapter 15](https://github.com/bonohub13/learning_vulkan/tree/chapter_15)
+    - [Rendering and presentation](https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation)
 
 ## Fatal commits
 - September 13, 2022

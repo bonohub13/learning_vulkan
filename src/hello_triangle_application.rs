@@ -2,7 +2,7 @@ mod _triangle {
     use vk_utils::{
         constants::{
             APPLICATION_NAME, APPLICATION_VERSION, ENGINE_NAME, ENGINE_VERSION,
-            VK_VALIDATION_LAYER_NAMES,
+            MAX_FRAMES_IN_FLIGHT, VK_VALIDATION_LAYER_NAMES,
         },
         device::create_logical_device,
         tools::debug as vk_debug,
@@ -25,6 +25,12 @@ mod _triangle {
         KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn, KhrPortabilitySubsetFn,
     };
 
+    struct SyncObjects {
+        image_available_semaphores: Vec<vk::Semaphore>,
+        render_finished_semaphores: Vec<vk::Semaphore>,
+        in_flight_fences: Vec<vk::Fence>,
+    }
+
     pub struct HelloTriangleTriangle {
         _entry: Entry,
         instance: Instance,
@@ -38,8 +44,8 @@ mod _triangle {
         _physical_device: vk::PhysicalDevice,
         device: Device,
 
-        _graphics_queue: vk::Queue,
-        _present_queue: vk::Queue,
+        graphics_queue: vk::Queue,
+        present_queue: vk::Queue,
 
         swapchain_loader: Swapchain,
         swapchain: vk::SwapchainKHR,
@@ -56,6 +62,11 @@ mod _triangle {
 
         command_pool: vk::CommandPool,
         command_buffers: Vec<vk::CommandBuffer>,
+
+        image_available_semaphores: Vec<vk::Semaphore>,
+        render_finished_semaphores: Vec<vk::Semaphore>,
+        in_flight_fences: Vec<vk::Fence>,
+        current_frame: usize,
     }
 
     impl HelloTriangleTriangle {
@@ -107,8 +118,8 @@ mod _triangle {
                 &swapchain_info.swapchain_extent,
             );
 
-            let command_pool = Self::create_command_pool(&device, &family_indices);
-            let command_buffers = Self::create_command_buffers(
+            let command_pool = vk_utils::command::create_command_pool(&device, &family_indices);
+            let command_buffers = vk_utils::command::create_command_buffers(
                 &device,
                 command_pool.clone(),
                 graphics_pipeline.clone(),
@@ -116,6 +127,8 @@ mod _triangle {
                 render_pass.clone(),
                 swapchain_info.swapchain_extent,
             );
+
+            let sync_objects = Self::create_sync_objects(&device);
 
             Self {
                 _entry: entry,
@@ -130,8 +143,8 @@ mod _triangle {
                 _physical_device: physical_device,
                 device,
 
-                _graphics_queue: graphics_queue,
-                _present_queue: present_queue,
+                graphics_queue,
+                present_queue,
 
                 swapchain_loader: swapchain_info.swapchain_loader,
                 swapchain: swapchain_info.swapchain,
@@ -148,6 +161,11 @@ mod _triangle {
 
                 command_pool,
                 command_buffers,
+
+                image_available_semaphores: sync_objects.image_available_semaphores,
+                render_finished_semaphores: sync_objects.render_finished_semaphores,
+                in_flight_fences: sync_objects.in_flight_fences,
+                current_frame: 0,
             }
         }
 
@@ -218,135 +236,117 @@ mod _triangle {
             }
         }
 
-        fn create_command_pool(
-            device: &ash::Device,
-            queue_families: &QueueFamilyIndices,
-        ) -> vk::CommandPool {
-            // Command pools
-            let pool_info = vk::CommandPoolCreateInfo::builder()
-                .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
-                .queue_family_index(queue_families.graphics_family.unwrap());
-
-            unsafe {
-                device
-                    .create_command_pool(&pool_info, None)
-                    .expect("failed to create command pool!")
-            }
-        }
-
-        fn create_command_buffers(
-            device: &ash::Device,
-            command_pool: vk::CommandPool,
-            graphics_pipeline: vk::Pipeline,
-            framebuffers: &Vec<vk::Framebuffer>,
-            render_pass: vk::RenderPass,
-            surface_extent: vk::Extent2D,
-        ) -> Vec<vk::CommandBuffer> {
-            // Command buffer allocation
-            let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
-                .command_buffer_count(framebuffers.len() as u32)
-                .command_pool(command_pool)
-                .level(vk::CommandBufferLevel::PRIMARY);
-
-            let command_buffers = unsafe {
-                device
-                    .allocate_command_buffers(&command_buffer_allocate_info)
-                    .expect("failed to allocate command buffers!")
+        fn create_sync_objects(device: &ash::Device) -> SyncObjects {
+            // Creating the synchronization objects
+            let mut sync_objects = SyncObjects {
+                image_available_semaphores: Vec::new(),
+                render_finished_semaphores: Vec::new(),
+                in_flight_fences: Vec::new(),
             };
 
-            for (image_index, &command_buffer) in command_buffers.iter().enumerate() {
-                Self::record_command_buffer(
-                    device,
-                    command_buffer,
-                    image_index as u32,
-                    render_pass,
-                    graphics_pipeline,
-                    framebuffers,
-                    surface_extent,
-                );
+            let semaphore_info = vk::SemaphoreCreateInfo::builder();
+            let fence_info = vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED);
+
+            for _ in 0..MAX_FRAMES_IN_FLIGHT {
+                let image_available_semaphore = unsafe {
+                    device
+                        .create_semaphore(&semaphore_info, None)
+                        .expect("failed to create semaphore!")
+                };
+                let render_finished_semaphore = unsafe {
+                    device
+                        .create_semaphore(&semaphore_info, None)
+                        .expect("failed to create semaphore!")
+                };
+                let in_flight_fence = unsafe {
+                    device
+                        .create_fence(&fence_info, None)
+                        .expect("failed to create fence!")
+                };
+
+                sync_objects
+                    .image_available_semaphores
+                    .push(image_available_semaphore);
+                sync_objects
+                    .render_finished_semaphores
+                    .push(render_finished_semaphore);
+                sync_objects.in_flight_fences.push(in_flight_fence);
             }
 
-            command_buffers
+            sync_objects
         }
 
-        fn record_command_buffer(
-            device: &ash::Device,
-            command_buffer: vk::CommandBuffer,
-            image_index: u32,
-            render_pass: vk::RenderPass,
-            graphics_pipeline: vk::Pipeline,
-            framebuffers: &Vec<vk::Framebuffer>,
-            swapchain_extent: vk::Extent2D,
-        ) {
-            // Command buffer recording
-            let begin_info = vk::CommandBufferBeginInfo::builder()
-                .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
+        pub fn draw_frame(&mut self) {
+            // Waiting for the previous frame
+            let wait_fences = [self.in_flight_fences[self.current_frame]];
 
             unsafe {
-                device
-                    .begin_command_buffer(command_buffer, &begin_info)
-                    .expect("failed to begin recording command buffer!");
+                self.device
+                    .wait_for_fences(&wait_fences, true, std::u64::MAX)
+                    .expect("failed to wait for fence!");
+                self.device
+                    .reset_fences(&wait_fences)
+                    .expect("failed to reset fence!");
             }
 
-            // Starting a render pass
-            let clear_colors = [vk::ClearValue {
-                color: vk::ClearColorValue {
-                    float32: [0.0, 0.0, 0.0, 1.0],
-                },
-            }];
+            // Acquiring an image from the swapchain
+            let (image_index, _is_sub_optimal) = unsafe {
+                self.swapchain_loader
+                    .acquire_next_image(
+                        self.swapchain,
+                        std::u64::MAX,
+                        self.image_available_semaphores[self.current_frame],
+                        vk::Fence::null(),
+                    )
+                    .expect("failed to acquire next image.")
+            };
 
-            let render_pass_info = vk::RenderPassBeginInfo::builder()
-                .render_pass(render_pass)
-                .framebuffer(framebuffers[image_index as usize])
-                .render_area(vk::Rect2D {
-                    offset: vk::Offset2D { x: 0, y: 0 },
-                    extent: swapchain_extent,
-                })
-                .clear_values(&clear_colors);
+            // Recording the command buffer
+            // Submitting the command buffer
+            let wait_semaphores = [self.image_available_semaphores[self.current_frame]];
+            let wait_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
+            let signal_semaphores = [self.render_finished_semaphores[self.current_frame]];
+            let command_buffers = [self.command_buffers[image_index as usize]];
 
-            unsafe {
-                device.cmd_begin_render_pass(
-                    command_buffer,
-                    &render_pass_info,
-                    vk::SubpassContents::INLINE,
-                );
-            }
-
-            // Basic drawing commands
-            unsafe {
-                device.cmd_bind_pipeline(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    graphics_pipeline,
-                );
-            }
-
-            let viewports = [vk::Viewport::builder()
-                .x(0.0)
-                .y(0.0)
-                .width(swapchain_extent.width as f32)
-                .height(swapchain_extent.height as f32)
-                .min_depth(0.0)
-                .max_depth(1.0)
-                .build()];
-            let scissors = [vk::Rect2D::builder()
-                .offset(vk::Offset2D { x: 0, y: 0 })
-                .extent(swapchain_extent)
+            let submit_infos = [vk::SubmitInfo::builder()
+                .wait_semaphores(&wait_semaphores)
+                .wait_dst_stage_mask(&wait_stages)
+                .command_buffers(&command_buffers)
+                .signal_semaphores(&signal_semaphores)
                 .build()];
 
             unsafe {
-                device.cmd_set_viewport(command_buffer, 0, &viewports);
-                device.cmd_set_scissor(command_buffer, 0, &scissors);
-
-                device.cmd_draw(command_buffer, 3, 1, 0, 0);
+                self.device
+                    .queue_submit(
+                        self.graphics_queue,
+                        &submit_infos,
+                        self.in_flight_fences[self.current_frame],
+                    )
+                    .expect("failed to submit draw command buffer!");
             }
 
-            // Finishing up
+            // Presentation
+            let swapchains = [self.swapchain];
+            let image_indices = [image_index];
+            let present_info = vk::PresentInfoKHR::builder()
+                .wait_semaphores(&signal_semaphores)
+                .swapchains(&swapchains)
+                .image_indices(&image_indices);
+
             unsafe {
-                device.cmd_end_render_pass(command_buffer);
-                device
-                    .end_command_buffer(command_buffer)
-                    .expect("failed to record command buffer!");
+                self.swapchain_loader
+                    .queue_present(self.present_queue, &present_info)
+                    .expect("failed to execute queue present!");
+            }
+
+            self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+        }
+
+        pub fn wait_for_device_idle(&self) {
+            unsafe {
+                self.device
+                    .device_wait_idle()
+                    .expect("failed to wait device idle!");
             }
         }
     }
@@ -354,6 +354,14 @@ mod _triangle {
     impl Drop for HelloTriangleTriangle {
         fn drop(&mut self) {
             unsafe {
+                for i in 0..MAX_FRAMES_IN_FLIGHT {
+                    self.device
+                        .destroy_semaphore(self.image_available_semaphores[i], None);
+                    self.device
+                        .destroy_semaphore(self.render_finished_semaphores[i], None);
+                    self.device.destroy_fence(self.in_flight_fences[i], None);
+                }
+
                 self.device.destroy_command_pool(self.command_pool, None);
 
                 for &framebuffer in self.swapchain_framebuffers.iter() {

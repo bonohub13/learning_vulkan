@@ -27,10 +27,21 @@ mod _render_pass {
             .color_attachments(&color_attachment_refs)
             .build()];
 
+        // Subpass dependecies
+        let dependencies = [vk::SubpassDependency::builder()
+            .src_subpass(vk::SUBPASS_EXTERNAL)
+            .dst_subpass(0)
+            .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+            .src_access_mask(vk::AccessFlags::NONE)
+            .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+            .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
+            .build()];
+
         // Render pass
         let render_pass_info = vk::RenderPassCreateInfo::builder()
             .attachments(&color_attachments)
-            .subpasses(&subpasses);
+            .subpasses(&subpasses)
+            .dependencies(&dependencies);
 
         unsafe {
             device
