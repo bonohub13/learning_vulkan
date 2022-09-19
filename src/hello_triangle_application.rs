@@ -55,6 +55,7 @@ mod _triangle {
         graphics_pipeline: vk::Pipeline,
 
         command_pool: vk::CommandPool,
+        command_buffers: Vec<vk::CommandBuffer>,
     }
 
     impl HelloTriangleTriangle {
@@ -107,6 +108,14 @@ mod _triangle {
             );
 
             let command_pool = Self::create_command_pool(&device, &family_indices);
+            let command_buffers = Self::create_command_buffers(
+                &device,
+                command_pool.clone(),
+                graphics_pipeline.clone(),
+                &swapchain_framebuffers,
+                render_pass.clone(),
+                swapchain_info.swapchain_extent,
+            );
 
             Self {
                 _entry: entry,
@@ -136,6 +145,9 @@ mod _triangle {
 
                 pipeline_layout,
                 graphics_pipeline,
+
+                command_pool,
+                command_buffers,
             }
         }
 
@@ -342,6 +354,8 @@ mod _triangle {
     impl Drop for HelloTriangleTriangle {
         fn drop(&mut self) {
             unsafe {
+                self.device.destroy_command_pool(self.command_pool, None);
+
                 for &framebuffer in self.swapchain_framebuffers.iter() {
                     self.device.destroy_framebuffer(framebuffer, None);
                 }
