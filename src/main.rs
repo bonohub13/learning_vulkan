@@ -14,9 +14,10 @@ use winit::{
 fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Vulkan tutorial with ash")
+        .with_title("Vulkan")
         .with_inner_size(PhysicalSize::new(WIDTH, HEIGHT))
         .with_min_inner_size(PhysicalSize::new(MINIMAL_WIDTH, MINIMAL_HEIGHT))
+        .with_max_inner_size(PhysicalSize::new(MAXIMUM_WIDTH, MAXIMUM_HEIGHT))
         .build(&event_loop)
         .unwrap();
     let mut app = HelloTriangleTriangle::new(&window);

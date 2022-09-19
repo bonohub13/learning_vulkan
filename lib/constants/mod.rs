@@ -6,6 +6,8 @@ mod _constants {
     pub const HEIGHT: u32 = 600;
     pub const MINIMAL_WIDTH: u32 = 100;
     pub const MINIMAL_HEIGHT: u32 = 100;
+    pub const MAXIMUM_WIDTH: u32 = 1920;
+    pub const MAXIMUM_HEIGHT: u32 = 1080;
 
     pub const APPLICATION_NAME: &str = "Hello Triangle";
     pub const APPLICATION_VERSION: u32 = make_api_version(0, 1, 0, 0);
@@ -34,7 +36,7 @@ pub use _constants::{
     ENGINE_NAME,    // engine name
     ENGINE_VERSION, // engine version
 };
-pub use _constants::{MINIMAL_HEIGHT, MINIMAL_WIDTH};
+pub use _constants::{MAXIMUM_HEIGHT, MAXIMUM_WIDTH, MINIMAL_HEIGHT, MINIMAL_WIDTH};
 
 pub use _constants::MAX_FRAMES_IN_FLIGHT;
 

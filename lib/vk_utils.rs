@@ -23,6 +23,8 @@ pub struct VkDeviceExtension {
 pub struct VkSurfaceInfo {
     pub surface_loader: ash::extensions::khr::Surface,
     pub surface: ash::vk::SurfaceKHR,
+    pub screen_width: u32,
+    pub screen_height: u32,
 }
 
 pub struct VkSwapChainInfo {
@@ -55,4 +57,10 @@ impl QueueFamilyIndices {
     pub fn is_complete(&self) -> bool {
         self.graphics_family.is_some() && self.present_family.is_some()
     }
+}
+
+pub struct SyncObjects {
+    pub image_available_semaphores: Vec<ash::vk::Semaphore>,
+    pub render_finished_semaphores: Vec<ash::vk::Semaphore>,
+    pub in_flight_fences: Vec<ash::vk::Fence>,
 }

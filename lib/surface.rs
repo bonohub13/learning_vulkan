@@ -19,6 +19,8 @@ mod _surface {
         vk_utils::VkSurfaceInfo {
             surface_loader,
             surface,
+            screen_width: WIDTH,
+            screen_height: HEIGHT,
         }
     }
 

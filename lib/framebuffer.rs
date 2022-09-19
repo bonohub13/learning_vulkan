@@ -1,4 +1,6 @@
 mod _framebuffer {
+    use crate as vk_utils;
+
     use ash::vk;
 
     pub fn create_framebuffers(
@@ -26,6 +28,46 @@ mod _framebuffer {
             })
             .collect()
     }
+
+    pub fn create_sync_objects(device: &ash::Device) -> vk_utils::SyncObjects {
+        // Creating the synchronization objects
+        let mut sync_objects = vk_utils::SyncObjects {
+            image_available_semaphores: Vec::new(),
+            render_finished_semaphores: Vec::new(),
+            in_flight_fences: Vec::new(),
+        };
+
+        let semaphore_info = vk::SemaphoreCreateInfo::builder();
+        let fence_info = vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED);
+
+        for _ in 0..vk_utils::constants::MAX_FRAMES_IN_FLIGHT {
+            let image_available_semaphore = unsafe {
+                device
+                    .create_semaphore(&semaphore_info, None)
+                    .expect("failed to create semaphore!")
+            };
+            let render_finished_semaphore = unsafe {
+                device
+                    .create_semaphore(&semaphore_info, None)
+                    .expect("failed to create semaphore!")
+            };
+            let in_flight_fence = unsafe {
+                device
+                    .create_fence(&fence_info, None)
+                    .expect("failed to create fence!")
+            };
+
+            sync_objects
+                .image_available_semaphores
+                .push(image_available_semaphore);
+            sync_objects
+                .render_finished_semaphores
+                .push(render_finished_semaphore);
+            sync_objects.in_flight_fences.push(in_flight_fence);
+        }
+
+        sync_objects
+    }
 }
 
-pub use _framebuffer::create_framebuffers;
+pub use _framebuffer::{create_framebuffers, create_sync_objects};

@@ -1,8 +1,8 @@
 mod _triangle {
     use vk_utils::{
         constants::{
-            APPLICATION_NAME, APPLICATION_VERSION, ENGINE_NAME, ENGINE_VERSION,
-            MAX_FRAMES_IN_FLIGHT, VK_VALIDATION_LAYER_NAMES,
+            APPLICATION_NAME, APPLICATION_VERSION, ENGINE_NAME, ENGINE_VERSION, HEIGHT,
+            MAX_FRAMES_IN_FLIGHT, VK_VALIDATION_LAYER_NAMES, WIDTH,
         },
         device::create_logical_device,
         tools::debug as vk_debug,
@@ -25,12 +25,6 @@ mod _triangle {
         KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn, KhrPortabilitySubsetFn,
     };
 
-    struct SyncObjects {
-        image_available_semaphores: Vec<vk::Semaphore>,
-        render_finished_semaphores: Vec<vk::Semaphore>,
-        in_flight_fences: Vec<vk::Fence>,
-    }
-
     pub struct HelloTriangleTriangle {
         _entry: Entry,
         instance: Instance,
@@ -41,17 +35,18 @@ mod _triangle {
         surface_loader: Surface,
         surface: vk::SurfaceKHR,
 
-        _physical_device: vk::PhysicalDevice,
+        physical_device: vk::PhysicalDevice,
         device: Device,
 
+        queue_family: QueueFamilyIndices,
         graphics_queue: vk::Queue,
         present_queue: vk::Queue,
 
         swapchain_loader: Swapchain,
         swapchain: vk::SwapchainKHR,
-        _swapchain_images: Vec<vk::Image>,
-        _swapchain_format: vk::Format,
-        _swapchain_extent: vk::Extent2D,
+        swapchain_images: Vec<vk::Image>,
+        swapchain_format: vk::Format,
+        swapchain_extent: vk::Extent2D,
         swapchain_imageviews: Vec<vk::ImageView>,
         swapchain_framebuffers: Vec<vk::Framebuffer>,
 
@@ -67,6 +62,8 @@ mod _triangle {
         render_finished_semaphores: Vec<vk::Semaphore>,
         in_flight_fences: Vec<vk::Fence>,
         current_frame: usize,
+
+        is_framebuffer_resized: bool,
     }
 
     impl HelloTriangleTriangle {
@@ -128,7 +125,7 @@ mod _triangle {
                 swapchain_info.swapchain_extent,
             );
 
-            let sync_objects = Self::create_sync_objects(&device);
+            let sync_objects = vk_utils::framebuffer::create_sync_objects(&device);
 
             Self {
                 _entry: entry,
@@ -140,17 +137,18 @@ mod _triangle {
                 debug_utils_loader,
                 debug_callback,
 
-                _physical_device: physical_device,
+                physical_device,
                 device,
 
+                queue_family: family_indices,
                 graphics_queue,
                 present_queue,
 
                 swapchain_loader: swapchain_info.swapchain_loader,
                 swapchain: swapchain_info.swapchain,
-                _swapchain_images: swapchain_info.swapchain_images,
-                _swapchain_format: swapchain_info.swapchain_format,
-                _swapchain_extent: swapchain_info.swapchain_extent,
+                swapchain_images: swapchain_info.swapchain_images,
+                swapchain_format: swapchain_info.swapchain_format,
+                swapchain_extent: swapchain_info.swapchain_extent,
                 swapchain_imageviews,
                 swapchain_framebuffers,
 
@@ -166,6 +164,8 @@ mod _triangle {
                 render_finished_semaphores: sync_objects.render_finished_semaphores,
                 in_flight_fences: sync_objects.in_flight_fences,
                 current_frame: 0,
+
+                is_framebuffer_resized: false,
             }
         }
 
@@ -236,70 +236,43 @@ mod _triangle {
             }
         }
 
-        fn create_sync_objects(device: &ash::Device) -> SyncObjects {
-            // Creating the synchronization objects
-            let mut sync_objects = SyncObjects {
-                image_available_semaphores: Vec::new(),
-                render_finished_semaphores: Vec::new(),
-                in_flight_fences: Vec::new(),
-            };
-
-            let semaphore_info = vk::SemaphoreCreateInfo::builder();
-            let fence_info = vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED);
-
-            for _ in 0..MAX_FRAMES_IN_FLIGHT {
-                let image_available_semaphore = unsafe {
-                    device
-                        .create_semaphore(&semaphore_info, None)
-                        .expect("failed to create semaphore!")
-                };
-                let render_finished_semaphore = unsafe {
-                    device
-                        .create_semaphore(&semaphore_info, None)
-                        .expect("failed to create semaphore!")
-                };
-                let in_flight_fence = unsafe {
-                    device
-                        .create_fence(&fence_info, None)
-                        .expect("failed to create fence!")
-                };
-
-                sync_objects
-                    .image_available_semaphores
-                    .push(image_available_semaphore);
-                sync_objects
-                    .render_finished_semaphores
-                    .push(render_finished_semaphore);
-                sync_objects.in_flight_fences.push(in_flight_fence);
-            }
-
-            sync_objects
-        }
-
         pub fn draw_frame(&mut self) {
             // Waiting for the previous frame
+            // Fixing a deadlock
             let wait_fences = [self.in_flight_fences[self.current_frame]];
 
             unsafe {
                 self.device
                     .wait_for_fences(&wait_fences, true, std::u64::MAX)
                     .expect("failed to wait for fence!");
-                self.device
-                    .reset_fences(&wait_fences)
-                    .expect("failed to reset fence!");
             }
 
             // Acquiring an image from the swapchain
             let (image_index, _is_sub_optimal) = unsafe {
-                self.swapchain_loader
-                    .acquire_next_image(
-                        self.swapchain,
-                        std::u64::MAX,
-                        self.image_available_semaphores[self.current_frame],
-                        vk::Fence::null(),
-                    )
-                    .expect("failed to acquire next image.")
+                // Suboptimal or out-of-date swap chain
+                let result = self.swapchain_loader.acquire_next_image(
+                    self.swapchain,
+                    std::u64::MAX,
+                    self.image_available_semaphores[self.current_frame],
+                    vk::Fence::null(),
+                );
+                match result {
+                    Ok(image_index) => image_index,
+                    Err(vk_result) => match vk_result {
+                        vk::Result::ERROR_OUT_OF_DATE_KHR => {
+                            self.recreate_swapchain();
+                            return;
+                        }
+                        _ => panic!("failed to acquire swap chain image!"),
+                    },
+                }
             };
+
+            unsafe {
+                self.device
+                    .reset_fences(&wait_fences)
+                    .expect("failed to reset fence!");
+            }
 
             // Recording the command buffer
             // Submitting the command buffer
@@ -333,10 +306,23 @@ mod _triangle {
                 .swapchains(&swapchains)
                 .image_indices(&image_indices);
 
-            unsafe {
+            // Handling resizes explicitly
+            let result = unsafe {
                 self.swapchain_loader
                     .queue_present(self.present_queue, &present_info)
-                    .expect("failed to execute queue present!");
+            };
+
+            let is_resized = match result {
+                Ok(_) => self.is_framebuffer_resized,
+                Err(vk_result) => match vk_result {
+                    vk::Result::ERROR_OUT_OF_DATE_KHR | vk::Result::SUBOPTIMAL_KHR => true,
+                    _ => panic!("failed to present swap chain image!"),
+                },
+            };
+
+            if is_resized {
+                self.is_framebuffer_resized = false;
+                self.recreate_swapchain();
             }
 
             self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -349,20 +335,11 @@ mod _triangle {
                     .expect("failed to wait device idle!");
             }
         }
-    }
 
-    impl Drop for HelloTriangleTriangle {
-        fn drop(&mut self) {
+        fn cleanup_swapchain(&self) {
             unsafe {
-                for i in 0..MAX_FRAMES_IN_FLIGHT {
-                    self.device
-                        .destroy_semaphore(self.image_available_semaphores[i], None);
-                    self.device
-                        .destroy_semaphore(self.render_finished_semaphores[i], None);
-                    self.device.destroy_fence(self.in_flight_fences[i], None);
-                }
-
-                self.device.destroy_command_pool(self.command_pool, None);
+                self.device
+                    .free_command_buffers(self.command_pool, &self.command_buffers);
 
                 for &framebuffer in self.swapchain_framebuffers.iter() {
                     self.device.destroy_framebuffer(framebuffer, None);
@@ -377,9 +354,88 @@ mod _triangle {
                 for &image_view in self.swapchain_imageviews.iter() {
                     self.device.destroy_image_view(image_view, None);
                 }
-
                 self.swapchain_loader
                     .destroy_swapchain(self.swapchain, None);
+            }
+        }
+        fn recreate_swapchain(&mut self) {
+            // Recreating the swap chain
+            unsafe {
+                self.device
+                    .device_wait_idle()
+                    .expect("failed to wait device idle!");
+            }
+
+            self.cleanup_swapchain();
+
+            let surface_info = vk_utils::VkSurfaceInfo {
+                surface_loader: self.surface_loader.clone(),
+                surface: self.surface,
+                screen_width: WIDTH,
+                screen_height: HEIGHT,
+            };
+            let swapchain_info = vk_utils::swapchain::create_swap_chain(
+                &self.instance,
+                &self.device,
+                self.physical_device,
+                &surface_info,
+                &self.queue_family,
+            );
+
+            self.swapchain_loader = swapchain_info.swapchain_loader;
+            self.swapchain = swapchain_info.swapchain;
+            self.swapchain_images = swapchain_info.swapchain_images;
+            self.swapchain_extent = swapchain_info.swapchain_extent;
+            self.swapchain_format = swapchain_info.swapchain_format;
+
+            self.swapchain_imageviews = vk_utils::swapchain::create_image_views(
+                &self.device,
+                self.swapchain_format,
+                &self.swapchain_images,
+            );
+
+            self.render_pass =
+                vk_utils::render_pass::create_render_pass(&self.device, self.swapchain_format);
+            let (graphics_pipeline, pipeline_layout) = vk_utils::pipeline::create_graphics_pipeline(
+                &self.device,
+                swapchain_info.swapchain_extent,
+                self.render_pass,
+            );
+            self.graphics_pipeline = graphics_pipeline;
+            self.pipeline_layout = pipeline_layout;
+
+            self.swapchain_framebuffers = vk_utils::framebuffer::create_framebuffers(
+                &self.device,
+                self.render_pass,
+                &self.swapchain_imageviews,
+                &self.swapchain_extent,
+            );
+
+            self.command_buffers = vk_utils::command::create_command_buffers(
+                &self.device,
+                self.command_pool,
+                self.graphics_pipeline,
+                &self.swapchain_framebuffers,
+                self.render_pass,
+                self.swapchain_extent,
+            );
+        }
+    }
+
+    impl Drop for HelloTriangleTriangle {
+        fn drop(&mut self) {
+            unsafe {
+                for i in 0..MAX_FRAMES_IN_FLIGHT {
+                    self.device
+                        .destroy_semaphore(self.image_available_semaphores[i], None);
+                    self.device
+                        .destroy_semaphore(self.render_finished_semaphores[i], None);
+                    self.device.destroy_fence(self.in_flight_fences[i], None);
+                }
+
+                self.cleanup_swapchain();
+
+                self.device.destroy_command_pool(self.command_pool, None);
 
                 self.device.destroy_device(None);
 
