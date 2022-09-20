@@ -1,8 +1,8 @@
 mod _triangle {
     use vk_utils::{
         constants::{
-            APPLICATION_NAME, APPLICATION_VERSION, ENGINE_NAME, ENGINE_VERSION, HEIGHT,
-            MAX_FRAMES_IN_FLIGHT, VK_VALIDATION_LAYER_NAMES, WIDTH,
+            hello_triangle, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
+            VK_VALIDATION_LAYER_NAMES, WIDTH,
         },
         device::create_logical_device,
         tools::debug as vk_debug,
@@ -177,8 +177,9 @@ mod _triangle {
                 panic!("Validation layers requested, but not available!");
             }
 
-            let app_name =
-                unsafe { CStr::from_bytes_with_nul_unchecked(APPLICATION_NAME.as_bytes()) };
+            let app_name = unsafe {
+                CStr::from_bytes_with_nul_unchecked(hello_triangle::APPLICATION_NAME.as_bytes())
+            };
             let engine_name =
                 unsafe { CStr::from_bytes_with_nul_unchecked(ENGINE_NAME.as_bytes()) };
             let mut extension_names = ash_window::enumerate_required_extensions(window)
@@ -205,7 +206,7 @@ mod _triangle {
 
             let app_info = vk::ApplicationInfo::builder()
                 .application_name(app_name)
-                .application_version(APPLICATION_VERSION)
+                .application_version(hello_triangle::APPLICATION_VERSION)
                 .engine_name(engine_name)
                 .engine_version(ENGINE_VERSION)
                 .api_version(vk::make_api_version(0, 1, 0, 0));

@@ -429,6 +429,7 @@ dependencies = [
  "ash",
  "ash-window",
  "cocoa",
+ "memoffset",
  "metal",
  "num",
  "objc",

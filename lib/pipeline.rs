@@ -1,5 +1,5 @@
 mod _pipeline {
-    use crate as vk_utils;
+    use crate::{self as vk_utils, types::Vertex2D};
 
     use ash::vk;
     use std::ffi::CString;
@@ -41,8 +41,14 @@ mod _pipeline {
         let dynamic_state =
             vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_states);
 
+        // Pipeline vertex input
+        let binding_descriptions = Vertex2D::get_binding_description();
+        let attribute_descriptions = Vertex2D::get_attribute_descriptions();
+
         // Vertex input
-        let vertex_input_info = vk::PipelineVertexInputStateCreateInfo::builder();
+        let vertex_input_info = vk::PipelineVertexInputStateCreateInfo::builder()
+            .vertex_binding_descriptions(&binding_descriptions)
+            .vertex_attribute_descriptions(&attribute_descriptions);
 
         // Input assembly
         let input_assembly = vk::PipelineInputAssemblyStateCreateInfo::builder()
