@@ -255,10 +255,8 @@ mod _triangle {
             // Buffer creation
             use std::mem::size_of_val;
 
-            let mut vertices = hello_triangle::VERTICES;
-
             let buffer_info = vk::BufferCreateInfo::builder()
-                .size(size_of_val(&vertices) as u64)
+                .size(size_of_val(&hello_triangle::VERTICES) as u64)
                 .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
                 .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
@@ -308,7 +306,10 @@ mod _triangle {
             };
 
             unsafe {
-                data.copy_to_nonoverlapping(vertices.as_mut_ptr(), vertices.len());
+                data.copy_from_nonoverlapping(
+                    hello_triangle::VERTICES.as_ptr(),
+                    hello_triangle::VERTICES.len(),
+                );
 
                 device.unmap_memory(vertex_buffer_memory);
             }

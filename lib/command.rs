@@ -109,14 +109,6 @@ mod _command {
             );
         }
 
-        // Binding the vertex buffer
-        let vertex_buffers = [vertex_buffer];
-        let offsets = [0_u64];
-
-        unsafe {
-            device.cmd_bind_vertex_buffers(command_buffer, 0, &vertex_buffers, &offsets);
-        }
-
         let viewports = [vk::Viewport::builder()
             .x(0.0)
             .y(0.0)
@@ -133,6 +125,14 @@ mod _command {
         unsafe {
             device.cmd_set_viewport(command_buffer, 0, &viewports);
             device.cmd_set_scissor(command_buffer, 0, &scissors);
+        }
+
+        // Binding the vertex buffer
+        let vertex_buffers = [vertex_buffer];
+        let offsets = [0_u64];
+
+        unsafe {
+            device.cmd_bind_vertex_buffers(command_buffer, 0, &vertex_buffers, &offsets);
         }
 
         unsafe {
