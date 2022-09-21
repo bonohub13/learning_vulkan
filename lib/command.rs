@@ -117,7 +117,6 @@ mod _command {
             device.cmd_bind_vertex_buffers(command_buffer, 0, &vertex_buffers, &offsets);
         }
 
-        /*
         let viewports = [vk::Viewport::builder()
             .x(0.0)
             .y(0.0)
@@ -135,7 +134,6 @@ mod _command {
             device.cmd_set_viewport(command_buffer, 0, &viewports);
             device.cmd_set_scissor(command_buffer, 0, &scissors);
         }
-         */
 
         unsafe {
             device.cmd_draw(
