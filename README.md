@@ -2,6 +2,8 @@
 
 Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutorial.com/Introduction)
 
+![triangle](./results/rainbow_triangle.jpg "rainbow_triangle")
+
 ## So, what is this all about?
 This is a direct implementation of the [Vulkan Tutorial](https://vulkan-tutorial.com) using [Ash](https://docs.rs/ash). \
 The source code is mostly based off of [unknownue's vulkan-tutorial-rust](https://github.com/unknownue/vulkan-tutorial-rust) \
