@@ -2,7 +2,7 @@ SHELL := bash
 CC := $(shell which cargo)
 PWD := $(shell pwd)
 
-all: clean-shader build-shader clean build run
+all: clean-shader build-shader clean docker-build run
 
 # Shader code
 clean-shader:
