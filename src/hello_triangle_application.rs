@@ -55,6 +55,9 @@ mod _triangle {
         pipeline_layout: vk::PipelineLayout,
         graphics_pipeline: vk::Pipeline,
 
+        vertex_buffer: vk::Buffer,
+        vertex_buffer_memory: vk::DeviceMemory,
+
         command_pool: vk::CommandPool,
         command_buffers: Vec<vk::CommandBuffer>,
 
@@ -115,6 +118,9 @@ mod _triangle {
                 &swapchain_info.swapchain_extent,
             );
 
+            let (vertex_buffer, vertex_buffer_memory) =
+                Self::create_vertex_buffer(&instance, &device, physical_device.clone());
+
             let command_pool = vk_utils::command::create_command_pool(&device, &family_indices);
             let command_buffers = vk_utils::command::create_command_buffers(
                 &device,
@@ -123,6 +129,7 @@ mod _triangle {
                 &swapchain_framebuffers,
                 render_pass.clone(),
                 swapchain_info.swapchain_extent,
+                vertex_buffer,
             );
 
             let sync_objects = vk_utils::framebuffer::create_sync_objects(&device);
@@ -156,6 +163,9 @@ mod _triangle {
 
                 pipeline_layout,
                 graphics_pipeline,
+
+                vertex_buffer,
+                vertex_buffer_memory,
 
                 command_pool,
                 command_buffers,
@@ -235,6 +245,89 @@ mod _triangle {
                     .create_instance(&create_info, None)
                     .expect("failed to create instance!")
             }
+        }
+
+        fn create_vertex_buffer(
+            instance: &ash::Instance,
+            device: &ash::Device,
+            physical_device: vk::PhysicalDevice,
+        ) -> (vk::Buffer, vk::DeviceMemory) {
+            // Buffer creation
+            use std::mem::size_of_val;
+
+            let mut vertices = hello_triangle::VERTICES;
+
+            let buffer_info = vk::BufferCreateInfo::builder()
+                .size(size_of_val(&vertices) as u64)
+                .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
+                .sharing_mode(vk::SharingMode::EXCLUSIVE);
+
+            let vertex_buffer = unsafe {
+                device
+                    .create_buffer(&buffer_info, None)
+                    .expect("failed to create vertex buffer!")
+            };
+
+            // Memory requirements
+            let mem_requirements = unsafe { device.get_buffer_memory_requirements(vertex_buffer) };
+
+            // Memory allocation
+            let mem_properties =
+                unsafe { instance.get_physical_device_memory_properties(physical_device) };
+            let alloc_info = vk::MemoryAllocateInfo::builder()
+                .allocation_size(mem_requirements.size)
+                .memory_type_index(Self::find_memory_type(
+                    mem_requirements.memory_type_bits,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    mem_properties,
+                ));
+
+            let vertex_buffer_memory = unsafe {
+                device
+                    .allocate_memory(&alloc_info, None)
+                    .expect("failed to allocate vertex buffer memory!")
+            };
+
+            unsafe {
+                device
+                    .bind_buffer_memory(vertex_buffer, vertex_buffer_memory, 0)
+                    .expect("failed to bind buffer memory!");
+            }
+
+            // Filling the vertex buffer
+            let data = unsafe {
+                device
+                    .map_memory(
+                        vertex_buffer_memory,
+                        0,
+                        buffer_info.size,
+                        vk::MemoryMapFlags::empty(),
+                    )
+                    .expect("failed to map memory!")
+                    as *mut vk_utils::types::Vertex2D
+            };
+
+            unsafe {
+                data.copy_to_nonoverlapping(vertices.as_mut_ptr(), vertices.len());
+
+                device.unmap_memory(vertex_buffer_memory);
+            }
+
+            (vertex_buffer, vertex_buffer_memory)
+        }
+
+        fn find_memory_type(
+            type_filter: u32,
+            properties: vk::MemoryPropertyFlags,
+            mem_properties: vk::PhysicalDeviceMemoryProperties,
+        ) -> u32 {
+            for (i, memory_type) in mem_properties.memory_types.iter().enumerate() {
+                if (type_filter & (1 << i)) > 0 && memory_type.property_flags.contains(properties) {
+                    return i as u32;
+                }
+            }
+
+            panic!("failed to find suitable memory type!");
         }
 
         pub fn draw_frame(&mut self) {
@@ -419,6 +512,7 @@ mod _triangle {
                 &self.swapchain_framebuffers,
                 self.render_pass,
                 self.swapchain_extent,
+                self.vertex_buffer,
             );
         }
     }
@@ -435,6 +529,9 @@ mod _triangle {
                 }
 
                 self.cleanup_swapchain();
+
+                self.device.destroy_buffer(self.vertex_buffer, None);
+                self.device.free_memory(self.vertex_buffer_memory, None);
 
                 self.device.destroy_command_pool(self.command_pool, None);
 

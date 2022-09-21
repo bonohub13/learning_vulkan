@@ -1,5 +1,5 @@
 mod _command {
-    use crate as vk_utils;
+    use crate::{self as vk_utils, constants::hello_triangle};
 
     use ash::vk;
 
@@ -26,6 +26,7 @@ mod _command {
         framebuffers: &Vec<vk::Framebuffer>,
         render_pass: vk::RenderPass,
         surface_extent: vk::Extent2D,
+        vertex_buffer: vk::Buffer,
     ) -> Vec<vk::CommandBuffer> {
         // Command buffer allocation
         let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
@@ -48,6 +49,7 @@ mod _command {
                 graphics_pipeline,
                 framebuffers,
                 surface_extent,
+                vertex_buffer,
             );
         }
 
@@ -62,6 +64,7 @@ mod _command {
         graphics_pipeline: vk::Pipeline,
         framebuffers: &Vec<vk::Framebuffer>,
         swapchain_extent: vk::Extent2D,
+        vertex_buffer: vk::Buffer,
     ) {
         // Command buffer recording
         let begin_info = vk::CommandBufferBeginInfo::builder()
@@ -106,6 +109,15 @@ mod _command {
             );
         }
 
+        // Binding the vertex buffer
+        let vertex_buffers = [vertex_buffer];
+        let offsets = [0_u64];
+
+        unsafe {
+            device.cmd_bind_vertex_buffers(command_buffer, 0, &vertex_buffers, &offsets);
+        }
+
+        /*
         let viewports = [vk::Viewport::builder()
             .x(0.0)
             .y(0.0)
@@ -122,8 +134,17 @@ mod _command {
         unsafe {
             device.cmd_set_viewport(command_buffer, 0, &viewports);
             device.cmd_set_scissor(command_buffer, 0, &scissors);
+        }
+         */
 
-            device.cmd_draw(command_buffer, 3, 1, 0, 0);
+        unsafe {
+            device.cmd_draw(
+                command_buffer,
+                hello_triangle::VERTICES.len() as u32,
+                1,
+                0,
+                0,
+            );
         }
 
         // Finishing up

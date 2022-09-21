@@ -46,6 +46,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Swap chain recreation](https://vulkan-tutorial.com/Drawing_a_triangle/Swap_chain_recreation)
 - [chapter 17](https://github.com/bonohub13/learning_vulkan/tree/chapter_17)
     - [Vertex input description](https://vulkan-tutorial.com/Vertex_buffers/Vertex_input_description)
+- [chapter 18](https://github.com/bonohub13/learning_vulkan/tree/chapter_18)
+    - [Vertex buffer creation](https://vulkan-tutorial.com/Vertex_buffers/Vertex_buffer_creation)
 
 ## Fatal commits
 - September 13, 2022 [FIXED: September 18, 2022]
