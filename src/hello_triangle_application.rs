@@ -118,10 +118,16 @@ mod _triangle {
                 &swapchain_info.swapchain_extent,
             );
 
-            let (vertex_buffer, vertex_buffer_memory) =
-                Self::create_vertex_buffer(&instance, &device, physical_device.clone());
-
             let command_pool = vk_utils::command::create_command_pool(&device, &family_indices);
+
+            let (vertex_buffer, vertex_buffer_memory) = Self::create_vertex_buffer(
+                &instance,
+                &device,
+                physical_device.clone(),
+                command_pool,
+                graphics_queue,
+            );
+
             let command_buffers = vk_utils::command::create_command_buffers(
                 &device,
                 command_pool.clone(),
@@ -251,54 +257,32 @@ mod _triangle {
             instance: &ash::Instance,
             device: &ash::Device,
             physical_device: vk::PhysicalDevice,
+            command_pool: vk::CommandPool,
+            graphics_queue: vk::Queue,
         ) -> (vk::Buffer, vk::DeviceMemory) {
             // Buffer creation
             use std::mem::size_of_val;
 
-            let buffer_info = vk::BufferCreateInfo::builder()
-                .size(size_of_val(&hello_triangle::VERTICES) as u64)
-                .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
-                .sharing_mode(vk::SharingMode::EXCLUSIVE);
-
-            let vertex_buffer = unsafe {
-                device
-                    .create_buffer(&buffer_info, None)
-                    .expect("failed to create vertex buffer!")
-            };
-
-            // Memory requirements
-            let mem_requirements = unsafe { device.get_buffer_memory_requirements(vertex_buffer) };
-
-            // Memory allocation
-            let mem_properties =
+            // Using a stagin buffer
+            let buffer_size = size_of_val(&hello_triangle::VERTICES) as vk::DeviceSize;
+            let device_mem_properties =
                 unsafe { instance.get_physical_device_memory_properties(physical_device) };
-            let alloc_info = vk::MemoryAllocateInfo::builder()
-                .allocation_size(mem_requirements.size)
-                .memory_type_index(Self::find_memory_type(
-                    mem_requirements.memory_type_bits,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                    mem_properties,
-                ));
 
-            let vertex_buffer_memory = unsafe {
-                device
-                    .allocate_memory(&alloc_info, None)
-                    .expect("failed to allocate vertex buffer memory!")
-            };
-
-            unsafe {
-                device
-                    .bind_buffer_memory(vertex_buffer, vertex_buffer_memory, 0)
-                    .expect("failed to bind buffer memory!");
-            }
+            let (staging_buffer, staging_buffer_memory) = Self::create_buffer(
+                device,
+                buffer_size,
+                vk::BufferUsageFlags::TRANSFER_SRC,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                &device_mem_properties,
+            );
 
             // Filling the vertex buffer
             let data = unsafe {
                 device
                     .map_memory(
-                        vertex_buffer_memory,
+                        staging_buffer_memory,
                         0,
-                        buffer_info.size,
+                        buffer_size,
                         vk::MemoryMapFlags::empty(),
                     )
                     .expect("failed to map memory!")
@@ -311,24 +295,132 @@ mod _triangle {
                     hello_triangle::VERTICES.len(),
                 );
 
-                device.unmap_memory(vertex_buffer_memory);
+                device.unmap_memory(staging_buffer_memory);
+            }
+
+            let (vertex_buffer, vertex_buffer_memory) = Self::create_buffer(
+                device,
+                buffer_size,
+                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                &device_mem_properties,
+            );
+
+            Self::copy_buffer(
+                device,
+                graphics_queue,
+                command_pool,
+                staging_buffer,
+                vertex_buffer,
+                buffer_size,
+            );
+
+            // Cleaning up staging buffer
+            unsafe {
+                device.destroy_buffer(staging_buffer, None);
+                device.free_memory(staging_buffer_memory, None);
             }
 
             (vertex_buffer, vertex_buffer_memory)
         }
 
-        fn find_memory_type(
-            type_filter: u32,
+        fn create_buffer(
+            device: &ash::Device,
+            size: vk::DeviceSize,
+            usage: vk::BufferUsageFlags,
             properties: vk::MemoryPropertyFlags,
-            mem_properties: vk::PhysicalDeviceMemoryProperties,
-        ) -> u32 {
-            for (i, memory_type) in mem_properties.memory_types.iter().enumerate() {
-                if (type_filter & (1 << i)) > 0 && memory_type.property_flags.contains(properties) {
-                    return i as u32;
-                }
+            device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+        ) -> (vk::Buffer, vk::DeviceMemory) {
+            // Abstracting buffer creation
+            let buffer_info = vk::BufferCreateInfo::builder()
+                .size(size)
+                .usage(usage)
+                .sharing_mode(vk::SharingMode::EXCLUSIVE);
+            let buffer = unsafe {
+                device
+                    .create_buffer(&buffer_info, None)
+                    .expect("failed to create vertex buffer!")
+            };
+
+            let mem_requirements = unsafe { device.get_buffer_memory_requirements(buffer) };
+            let alloc_info = vk::MemoryAllocateInfo::builder()
+                .allocation_size(mem_requirements.size)
+                .memory_type_index(vk_utils::buffer::find_memory_type(
+                    mem_requirements.memory_type_bits,
+                    properties,
+                    device_memory_properties,
+                ));
+            let buffer_memory = unsafe {
+                device
+                    .allocate_memory(&alloc_info, None)
+                    .expect("failed to allocate buffer memory!")
+            };
+
+            unsafe {
+                device
+                    .bind_buffer_memory(buffer, buffer_memory, 0)
+                    .expect("failed to bind buffer memory!");
             }
 
-            panic!("failed to find suitable memory type!");
+            (buffer, buffer_memory)
+        }
+
+        fn copy_buffer(
+            device: &ash::Device,
+            graphics_queue: vk::Queue,
+            command_pool: vk::CommandPool,
+            src_buffer: vk::Buffer,
+            dst_buffer: vk::Buffer,
+            size: vk::DeviceSize,
+        ) {
+            // Using a staging buffer
+            let alloc_info = vk::CommandBufferAllocateInfo::builder()
+                .level(vk::CommandBufferLevel::PRIMARY)
+                .command_pool(command_pool)
+                .command_buffer_count(1);
+            let command_buffers = unsafe {
+                device
+                    .allocate_command_buffers(&alloc_info)
+                    .expect("failed to allocate command buffers!")
+            };
+            let command_buffers = [command_buffers[0]];
+
+            let begin_info = vk::CommandBufferBeginInfo::builder()
+                .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+
+            unsafe {
+                device
+                    .begin_command_buffer(command_buffers[0], &begin_info)
+                    .expect("failed to begin command buffer!");
+            }
+
+            let copy_regions = [vk::BufferCopy::builder()
+                .src_offset(0) // Optional
+                .dst_offset(0) // Optional
+                .size(size)
+                .build()];
+
+            unsafe {
+                device.cmd_copy_buffer(command_buffers[0], src_buffer, dst_buffer, &copy_regions);
+                device
+                    .end_command_buffer(command_buffers[0])
+                    .expect("failed to end command buffer!");
+            }
+
+            let submit_infos = [vk::SubmitInfo::builder()
+                .command_buffers(&command_buffers)
+                .build()];
+
+            unsafe {
+                device
+                    .queue_submit(graphics_queue, &submit_infos, vk::Fence::null())
+                    .expect("failed to submit queue!");
+                device
+                    .queue_wait_idle(graphics_queue)
+                    .expect("failed to wait idle for queue!");
+
+                device.free_command_buffers(command_pool, &command_buffers);
+            }
         }
 
         pub fn draw_frame(&mut self) {

@@ -3,6 +3,7 @@ pub mod tools;
 
 pub mod types;
 
+pub mod buffer;
 pub mod command;
 pub mod device;
 pub mod framebuffer;
