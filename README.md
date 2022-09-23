@@ -50,6 +50,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Vertex input description](https://vulkan-tutorial.com/Vertex_buffers/Vertex_input_description)
 - [chapter 18](https://github.com/bonohub13/learning_vulkan/tree/chapter_18)
     - [Vertex buffer creation](https://vulkan-tutorial.com/Vertex_buffers/Vertex_buffer_creation)
+- [chapter 19](https://github.com/bonohub13/learning_vulkan/tree/chapter_19)
+    - [Staging buffer](https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer)
 
 ## Fatal commits
 - September 13, 2022 [FIXED: September 18, 2022]
