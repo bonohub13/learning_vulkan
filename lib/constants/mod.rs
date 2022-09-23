@@ -45,7 +45,7 @@ pub mod hello_triangle {
     pub const APPLICATION_VERSION: u32 = // app version
         ash::vk::make_api_version(0, 1, 0, 0);
 
-    pub const VERTICES: [crate::types::Vertex2D; 3] = [
+    pub const TRIANGLE_VERTEX: [crate::types::Vertex2D; 3] = [
         crate::types::Vertex2D {
             pos: [0.0, -0.5],
             color: [1.0, 0.0, 0.0],
@@ -59,4 +59,25 @@ pub mod hello_triangle {
             color: [0.0, 0.0, 1.0],
         },
     ];
+
+    pub const VERTICES: [crate::types::Vertex2D; 4] = [
+        crate::types::Vertex2D {
+            pos: [-0.5, -0.5],
+            color: [1.0, 0.0, 0.0],
+        },
+        crate::types::Vertex2D {
+            pos: [0.5, -0.5],
+            color: [0.0, 1.0, 0.0],
+        },
+        crate::types::Vertex2D {
+            pos: [0.5, 0.5],
+            color: [0.0, 0.0, 1.0],
+        },
+        crate::types::Vertex2D {
+            pos: [-0.5, 0.5],
+            color: [1.0, 1.0, 1.0],
+        },
+    ];
+
+    pub const INDICES: [u32; 6] = [0, 1, 2, 2, 3, 0];
 }

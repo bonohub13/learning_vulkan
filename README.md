@@ -3,6 +3,7 @@
 Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutorial.com/Introduction)
 
 ![triangle](./results/rainbow_triangle.jpg "rainbow_triangle")
+![square](./results/rainbow_square.jpg "rainbow_square")
 
 ## So, what is this all about?
 This is a direct implementation of the [Vulkan Tutorial](https://vulkan-tutorial.com) using [Ash](https://docs.rs/ash). \
@@ -52,6 +53,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Vertex buffer creation](https://vulkan-tutorial.com/Vertex_buffers/Vertex_buffer_creation)
 - [chapter 19](https://github.com/bonohub13/learning_vulkan/tree/chapter_19)
     - [Staging buffer](https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer)
+- [chapter 20](https://github.com/bonohub13/learning_vulkan/tree/chapter_20)
+    - [Index buffer](https://vulkan-tutorial.com/Vertex_buffers/Index_buffer)
 
 ## Fatal commits
 - September 13, 2022 [FIXED: September 18, 2022]

@@ -27,6 +27,7 @@ mod _command {
         render_pass: vk::RenderPass,
         surface_extent: vk::Extent2D,
         vertex_buffer: vk::Buffer,
+        index_buffer: vk::Buffer,
     ) -> Vec<vk::CommandBuffer> {
         // Command buffer allocation
         let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
@@ -50,6 +51,7 @@ mod _command {
                 framebuffers,
                 surface_extent,
                 vertex_buffer,
+                index_buffer,
             );
         }
 
@@ -65,6 +67,7 @@ mod _command {
         framebuffers: &Vec<vk::Framebuffer>,
         swapchain_extent: vk::Extent2D,
         vertex_buffer: vk::Buffer,
+        index_buffer: vk::Buffer,
     ) {
         // Command buffer recording
         let begin_info = vk::CommandBufferBeginInfo::builder()
@@ -133,13 +136,16 @@ mod _command {
 
         unsafe {
             device.cmd_bind_vertex_buffers(command_buffer, 0, &vertex_buffers, &offsets);
+            // Using an index buffer
+            device.cmd_bind_index_buffer(command_buffer, index_buffer, 0, vk::IndexType::UINT32);
         }
 
         unsafe {
-            device.cmd_draw(
+            device.cmd_draw_indexed(
                 command_buffer,
-                hello_triangle::VERTICES.len() as u32,
+                hello_triangle::INDICES.len() as u32,
                 1,
+                0,
                 0,
                 0,
             );
