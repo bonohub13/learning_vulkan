@@ -55,6 +55,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Staging buffer](https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer)
 - [chapter 20](https://github.com/bonohub13/learning_vulkan/tree/chapter_20)
     - [Index buffer](https://vulkan-tutorial.com/Vertex_buffers/Index_buffer)
+- [chapter 21](https://github.com/bonohub13/learning_vulkan/tree/chapter_21)
+    - [Descriptor layout and buffer](https://vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer)
 
 ## Fatal commits
 - September 13, 2022 [FIXED: September 18, 2022]

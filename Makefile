@@ -31,7 +31,10 @@ cross-compile-win64: clean
 	cp ./target/x86_64-pc-windows-gnu/debug/learning_vulkan.exe bin/x86_64-pc-windows-gnu
 
 run:
-	OBS_VKCAPTURE=0 ENABLE_VKBASALT=0 MANGOHUD=0 ./bin/learning_vulkan 2>&1 | tee "/tmp/$(shell date +'%Y%m%d-%H%M%S').log"
+	[ -d "/tmp" ] \
+		&& ([ -d "/tmp/learning_vulkan" ] || mkdir "/tmp/learning_vulkan") \
+		&& OBS_VKCAPTURE=0 ENABLE_VKBASALT=0 MANGOHUD=0 ./bin/learning_vulkan 2>&1 \
+			| tee "/tmp/learning_vulkan/$(shell date +'%Y%m%d-%H%M%S').log"
 
 run-with-mangohud:
 	OBS_VKCAPTURE=0 ENABLE_VKBASALT=0 MANGOHUD=1 ./bin/learning_vulkan 2>&1 | tee "/tmp/$(shell date +'%Y%m%d-%H%M%S').log"

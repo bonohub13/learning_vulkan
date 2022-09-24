@@ -8,6 +8,7 @@ mod _pipeline {
         device: &ash::Device,
         swapchain_extent: vk::Extent2D,
         render_pass: vk::RenderPass,
+        descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
     ) -> (vk::Pipeline, vk::PipelineLayout) {
         use std::path::Path;
 
@@ -110,7 +111,8 @@ mod _pipeline {
             .blend_constants([0.0, 0.0, 0.0, 0.0]); // Optional
 
         // Pipeline layout
-        let pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder();
+        let pipeline_layout_info =
+            vk::PipelineLayoutCreateInfo::builder().set_layouts(&descriptor_set_layouts);
         let pipeline_layout = unsafe {
             device
                 .create_pipeline_layout(&pipeline_layout_info, None)

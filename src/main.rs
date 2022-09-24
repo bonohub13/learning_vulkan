@@ -20,38 +20,50 @@ fn main() {
         .with_max_inner_size(PhysicalSize::new(MAXIMUM_WIDTH, MAXIMUM_HEIGHT))
         .build(&event_loop)
         .unwrap();
+    let mut tick_counter = vk_utils::fps::FPSLimiter::new();
     let mut app = HelloTriangleTriangle::new(&window);
 
     // Application loop
     event_loop.run(move |event, _, control_flow| {
+        app.wait_for_device_idle();
         *control_flow = ControlFlow::Poll;
 
         match event {
             // Press the "erase window" button or press the escape key to kill
             // app
-            Event::WindowEvent {
-                event:
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested => {
+                    app.wait_for_device_idle();
+                    *control_flow = ControlFlow::Exit;
+                }
+                WindowEvent::KeyboardInput { input, .. } => match input {
+                    KeyboardInput {
+                        virtual_keycode,
+                        state,
                         ..
+                    } => match (virtual_keycode, state) {
+                        (Some(VirtualKeyCode::Escape), ElementState::Pressed) => {
+                            app.wait_for_device_idle();
+                            *control_flow = ControlFlow::Exit;
+                        }
+                        _ => {}
                     },
-                ..
-            } => {
-                *control_flow = ControlFlow::Exit;
-            }
+                },
+                WindowEvent::Resized(_new_size) => {
+                    app.wait_for_device_idle();
+                    app.resized_framebuffer();
+                }
+                _ => {}
+            },
             // Main event for app
             Event::MainEventsCleared => {
                 window.request_redraw();
             }
             Event::RedrawRequested(_window_id) => {
-                // TODO Draw frame here!
-                app.draw_frame();
+                let delta_time = tick_counter.delta_time();
+
+                app.draw_frame(delta_time);
+                tick_counter.tick_frame();
             }
             Event::LoopDestroyed => {
                 app.wait_for_device_idle();
