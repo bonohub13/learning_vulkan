@@ -63,9 +63,6 @@ fn main() {
                 let delta_time = tick_counter.delta_time();
 
                 app.draw_frame(delta_time);
-
-                print!("FPS: {}\r", tick_counter.fps());
-
                 tick_counter.tick_frame();
             }
             Event::LoopDestroyed => {
