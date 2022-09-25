@@ -60,6 +60,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Index buffer](https://vulkan-tutorial.com/Vertex_buffers/Index_buffer)
 - [chapter 21](https://github.com/bonohub13/learning_vulkan/tree/chapter_21) __DO NOT RUN!__
     - [Descriptor layout and buffer](https://vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer)
+- [chapter 22](https://github.com/bonohub13/learning_vulkan/tree/chapter_22)
+    - [Descriptor pool and sets](https://vulkan-tutorial.com/Uniform_buffers/Descriptor_pool_and_sets)
 
 ## Fatal commits
 - September 13, 2022 [FIXED: September 18, 2022]
