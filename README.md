@@ -4,6 +4,7 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
 
 ![triangle](./results/rainbow_triangle.jpg "rainbow_triangle")
 ![square](./results/rainbow_square.jpg "rainbow_square")
+![](./results/spinning_rainbow_square.mov)
 
 ## So, what is this all about?
 This is a direct implementation of the [Vulkan Tutorial](https://vulkan-tutorial.com) using [Ash](https://docs.rs/ash). \
