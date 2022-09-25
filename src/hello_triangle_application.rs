@@ -803,7 +803,7 @@ mod _triangle {
                 self.device
                     .destroy_descriptor_pool(self.descriptor_pool, None);
 
-                for i in 0..MAX_FRAMES_IN_FLIGHT {
+                for i in 0..self.uniform_buffers.len() {
                     self.device.destroy_buffer(self.uniform_buffers[i], None);
                     self.device
                         .free_memory(self.uniform_buffers_memory[i], None);
