@@ -4,7 +4,9 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
 
 ![triangle](./results/rainbow_triangle.jpg "rainbow_triangle")
 ![square](./results/rainbow_square.jpg "rainbow_square")
-https://github.com/bonohub13/learning_vulkan/tree/ash/results/spinning_rainbow_square.mp4
+
+https://user-images.githubusercontent.com/33274231/192131063-4ce5db7a-f49b-43bd-b57f-5540e941e0a0.mp4
+
 
 ## So, what is this all about?
 This is a direct implementation of the [Vulkan Tutorial](https://vulkan-tutorial.com) using [Ash](https://docs.rs/ash). \
@@ -95,3 +97,4 @@ this is using builders to mitigate any unnessesary initialization.
 When building the codes with docker, it is highly recommended to use [docker-rootless](https://docs.docker.com/engine/security/rootless/). \
 If you build using standard docker (not rootless docker), the built binary might end up
 with root user ownership. (which sucks BTW when you want to build, run, remove the file)
+

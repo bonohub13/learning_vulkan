@@ -28,6 +28,8 @@ mod _command {
         surface_extent: vk::Extent2D,
         vertex_buffer: vk::Buffer,
         index_buffer: vk::Buffer,
+        pipeline_layout: vk::PipelineLayout,
+        descriptor_sets: &Vec<vk::DescriptorSet>,
     ) -> Vec<vk::CommandBuffer> {
         // Command buffer allocation
         let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
@@ -52,6 +54,8 @@ mod _command {
                 surface_extent,
                 vertex_buffer,
                 index_buffer,
+                pipeline_layout,
+                descriptor_sets,
             );
         }
 
@@ -68,6 +72,8 @@ mod _command {
         swapchain_extent: vk::Extent2D,
         vertex_buffer: vk::Buffer,
         index_buffer: vk::Buffer,
+        pipeline_layout: vk::PipelineLayout,
+        descriptor_sets: &Vec<vk::DescriptorSet>,
     ) {
         // Command buffer recording
         let begin_info = vk::CommandBufferBeginInfo::builder()
@@ -138,6 +144,19 @@ mod _command {
             device.cmd_bind_vertex_buffers(command_buffer, 0, &vertex_buffers, &offsets);
             // Using an index buffer
             device.cmd_bind_index_buffer(command_buffer, index_buffer, 0, vk::IndexType::UINT32);
+        }
+
+        // Using descriptor sets
+        let descriptor_sets_to_bind = [descriptor_sets[image_index as usize]];
+        unsafe {
+            device.cmd_bind_descriptor_sets(
+                command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                pipeline_layout,
+                0,
+                &descriptor_sets_to_bind,
+                &[],
+            );
         }
 
         unsafe {

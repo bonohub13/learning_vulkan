@@ -62,8 +62,13 @@ mod _triangle {
         index_buffer: vk::Buffer,
         index_buffer_memory: vk::DeviceMemory,
 
+        uniform_transform: vk_types::UniformBufferObject,
+
         uniform_buffers: Vec<vk::Buffer>,
         uniform_buffers_memory: Vec<vk::DeviceMemory>,
+
+        descriptor_pool: vk::DescriptorPool,
+        descriptor_sets: Vec<vk::DescriptorSet>,
 
         command_pool: vk::CommandPool,
         command_buffers: Vec<vk::CommandBuffer>,
@@ -78,6 +83,8 @@ mod _triangle {
 
     impl HelloTriangleTriangle {
         pub fn new(window: &Window) -> Self {
+            use cgmath::SquareMatrix;
+
             let entry = Entry::linked();
             let instance = Self::create_instance(&entry, window);
 
@@ -114,12 +121,12 @@ mod _triangle {
             let render_pass =
                 vk_utils::render_pass::create_render_pass(&device, swapchain_info.swapchain_format);
 
-            let descriptor_set_layout = Self::create_descriptor_set_layout(&device);
+            let descriptor_set_layout = vk_utils::pipeline::create_descriptor_set_layout(&device);
             let (graphics_pipeline, pipeline_layout) = vk_utils::pipeline::create_graphics_pipeline(
                 &device,
                 swapchain_info.swapchain_extent,
                 render_pass.clone(),
-                vec![descriptor_set_layout],
+                descriptor_set_layout,
             );
 
             let swapchain_framebuffers = vk_utils::framebuffer::create_framebuffers(
@@ -147,8 +154,21 @@ mod _triangle {
                 graphics_queue,
             );
 
-            let (uniform_buffers, uniform_buffers_memory) =
-                Self::create_uniform_buffer(&device, &physical_device_memory_properties);
+            let (uniform_buffers, uniform_buffers_memory) = Self::create_uniform_buffer(
+                &device,
+                &physical_device_memory_properties,
+                swapchain_info.swapchain_images.len(),
+            );
+
+            let descriptor_pool =
+                Self::create_descriptor_pool(&device, swapchain_info.swapchain_images.len());
+            let descriptor_sets = Self::create_descriptor_sets(
+                &device,
+                descriptor_pool,
+                descriptor_set_layout,
+                &uniform_buffers,
+                swapchain_info.swapchain_images.len(),
+            );
 
             let command_buffers = vk_utils::command::create_command_buffers(
                 &device,
@@ -159,6 +179,8 @@ mod _triangle {
                 swapchain_info.swapchain_extent,
                 vertex_buffer,
                 index_buffer,
+                pipeline_layout,
+                &descriptor_sets,
             );
 
             let sync_objects = vk_utils::framebuffer::create_sync_objects(&device);
@@ -200,8 +222,27 @@ mod _triangle {
                 index_buffer,
                 index_buffer_memory,
 
+                uniform_transform: vk_types::UniformBufferObject::new(
+                    cgmath::Matrix4::<f32>::identity(),
+                    cgmath::Matrix4::look_at_rh(
+                        cgmath::Point3::new(2.0, 2.0, 2.0),
+                        cgmath::Point3::new(0.0, 0.0, 0.0),
+                        cgmath::Vector3::new(0.0, 0.0, 1.0),
+                    ),
+                    cgmath::perspective(
+                        cgmath::Deg(45.0),
+                        swapchain_info.swapchain_extent.width as f32
+                            / swapchain_info.swapchain_extent.height as f32,
+                        0.1,
+                        10.0,
+                    ),
+                ),
+
                 uniform_buffers,
                 uniform_buffers_memory,
+
+                descriptor_pool,
+                descriptor_sets,
 
                 command_pool,
                 command_buffers,
@@ -423,6 +464,7 @@ mod _triangle {
         fn create_uniform_buffer(
             device: &ash::Device,
             device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+            swapchain_image_size: usize,
         ) -> (Vec<vk::Buffer>, Vec<vk::DeviceMemory>) {
             // Uniform buffer
             use std::mem::size_of;
@@ -432,7 +474,7 @@ mod _triangle {
             let mut uniform_buffers: Vec<vk::Buffer> = Vec::new();
             let mut uniform_buffers_memory: Vec<vk::DeviceMemory> = Vec::new();
 
-            for _ in 0..MAX_FRAMES_IN_FLIGHT {
+            for _ in 0..swapchain_image_size {
                 let (uniform_buffer, uniform_buffer_memory) = vk_utils::buffer::create_buffer(
                     device,
                     buffer_size as u64,
@@ -448,24 +490,74 @@ mod _triangle {
             (uniform_buffers, uniform_buffers_memory)
         }
 
-        fn create_descriptor_set_layout(device: &ash::Device) -> vk::DescriptorSetLayout {
-            // Descriptor set layout
-            let ubo_layout_bindings = [vk::DescriptorSetLayoutBinding::builder()
-                .binding(0)
-                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::VERTEX)
+        fn create_descriptor_pool(
+            device: &ash::Device,
+            swapchain_image_size: usize,
+        ) -> vk::DescriptorPool {
+            // Descriptor pool
+            let pool_sizes = [vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::UNIFORM_BUFFER)
+                .descriptor_count(swapchain_image_size as u32)
                 .build()];
-            let layout_info =
-                vk::DescriptorSetLayoutCreateInfo::builder().bindings(&ubo_layout_bindings);
 
-            let descriptor_set_layout = unsafe {
+            let pool_info = vk::DescriptorPoolCreateInfo::builder()
+                .pool_sizes(&pool_sizes)
+                .max_sets(swapchain_image_size as u32);
+
+            unsafe {
                 device
-                    .create_descriptor_set_layout(&layout_info, None)
-                    .expect("failed to create descriptor set layout!")
+                    .create_descriptor_pool(&pool_info, None)
+                    .expect("failed to create descriptor pool!")
+            }
+        }
+
+        fn create_descriptor_sets(
+            device: &ash::Device,
+            descriptor_pool: vk::DescriptorPool,
+            descriptor_set_layout: vk::DescriptorSetLayout,
+            uniform_buffers: &Vec<vk::Buffer>,
+            swapchain_image_size: usize,
+        ) -> Vec<vk::DescriptorSet> {
+            // Descriptor set
+            use std::mem::size_of;
+
+            let mut layouts: Vec<vk::DescriptorSetLayout> = Vec::new();
+
+            for _ in 0..swapchain_image_size {
+                layouts.push(descriptor_set_layout);
+            }
+
+            let alloc_info = vk::DescriptorSetAllocateInfo::builder()
+                .descriptor_pool(descriptor_pool)
+                .set_layouts(&layouts);
+
+            let descriptor_sets = unsafe {
+                device
+                    .allocate_descriptor_sets(&alloc_info)
+                    .expect("failed to allocate descriptor sets!")
             };
 
-            descriptor_set_layout
+            for (i, &descriptor_set) in descriptor_sets.iter().enumerate() {
+                let buffer_infos = [vk::DescriptorBufferInfo::builder()
+                    .buffer(uniform_buffers[i])
+                    .offset(0)
+                    .range(size_of::<vk_types::UniformBufferObject>() as u64)
+                    .build()];
+
+                let descriptor_write = [vk::WriteDescriptorSet::builder()
+                    .dst_set(descriptor_set)
+                    .dst_binding(0)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                    .buffer_info(&buffer_infos)
+                    .build()];
+
+                unsafe {
+                    device.update_descriptor_sets(&descriptor_write, &[]);
+                }
+            }
+
+            descriptor_sets
         }
 
         pub fn draw_frame(&mut self, delta_time: f32) {
@@ -569,28 +661,19 @@ mod _triangle {
             }
         }
 
-        pub fn resized_framebuffer(&mut self) {
+        pub fn resize_framebuffer(&mut self) {
             self.is_framebuffer_resized = true;
         }
 
-        fn update_uniform_buffer(&self, current_image: usize, delta_time: f32) {
-            use cgmath::{Deg, Matrix4, Point3, Vector3};
+        fn update_uniform_buffer(&mut self, current_image: usize, delta_time: f32) {
+            use cgmath::{Deg, Matrix4, Vector3};
             use std::mem::size_of;
 
-            let ubos = [vk_types::UniformBufferObject::new(
-                Matrix4::from_angle_z(Deg(90.0 * delta_time)),
-                Matrix4::look_at_rh(
-                    Point3::new(2.0, 2.0, 2.0),
-                    Point3::new(0.0, 0.0, 0.0),
-                    Vector3::new(0.0, 0.0, 1.0),
-                ),
-                cgmath::perspective(
-                    Deg(45.0),
-                    self.swapchain_extent.width as f32 / self.swapchain_extent.height as f32,
-                    0.1,
-                    10.0,
-                ),
-            )];
+            self.uniform_transform.model =
+                Matrix4::from_axis_angle(Vector3::new(0.0, 0.0, 1.0), Deg(90.0) * delta_time)
+                    * self.uniform_transform.model;
+
+            let ubos = [self.uniform_transform.clone()];
 
             let buffer_size = (size_of::<vk_types::UniformBufferObject>() * ubos.len()) as u64;
 
@@ -609,7 +692,7 @@ mod _triangle {
             unsafe {
                 data.copy_from_nonoverlapping(ubos.as_ptr(), ubos.len());
                 self.device
-                    .unmap_memory(self.uniform_buffers_memory[current_image])
+                    .unmap_memory(self.uniform_buffers_memory[current_image]);
             }
         }
 
@@ -677,7 +760,7 @@ mod _triangle {
                 &self.device,
                 swapchain_info.swapchain_extent,
                 self.render_pass,
-                vec![self.descriptor_set_layout],
+                self.descriptor_set_layout,
             );
             self.graphics_pipeline = graphics_pipeline;
             self.pipeline_layout = pipeline_layout;
@@ -698,6 +781,8 @@ mod _triangle {
                 self.swapchain_extent,
                 self.vertex_buffer,
                 self.index_buffer,
+                self.pipeline_layout,
+                &self.descriptor_sets,
             );
         }
     }
@@ -715,20 +800,23 @@ mod _triangle {
 
                 self.cleanup_swapchain();
 
+                self.device
+                    .destroy_descriptor_pool(self.descriptor_pool, None);
+
                 for i in 0..MAX_FRAMES_IN_FLIGHT {
                     self.device.destroy_buffer(self.uniform_buffers[i], None);
                     self.device
                         .free_memory(self.uniform_buffers_memory[i], None);
                 }
 
-                self.device
-                    .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
-
                 self.device.destroy_buffer(self.index_buffer, None);
                 self.device.free_memory(self.index_buffer_memory, None);
 
                 self.device.destroy_buffer(self.vertex_buffer, None);
                 self.device.free_memory(self.vertex_buffer_memory, None);
+
+                self.device
+                    .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
 
                 self.device.destroy_command_pool(self.command_pool, None);
 

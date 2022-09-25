@@ -56,7 +56,7 @@ mod _FPSLimiter {
         pub fn fps(&self) -> f32 {
             let mut sum = 0_u32;
 
-            self.samples.iter().for_each(|&val| {
+            self.samples.iter().for_each(|val| {
                 sum += val;
             });
 

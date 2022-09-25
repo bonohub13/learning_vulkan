@@ -8,7 +8,7 @@ mod _pipeline {
         device: &ash::Device,
         swapchain_extent: vk::Extent2D,
         render_pass: vk::RenderPass,
-        descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
+        descriptor_set_layout: vk::DescriptorSetLayout,
     ) -> (vk::Pipeline, vk::PipelineLayout) {
         use std::path::Path;
 
@@ -79,6 +79,11 @@ mod _pipeline {
             .polygon_mode(vk::PolygonMode::FILL)
             .line_width(1.0)
             .cull_mode(vk::CullModeFlags::BACK)
+            /* TODO Research this! (UNKNOWN)
+             * In the Vulkan Tutorial, front_face is using vk::FrontFace::COUNTER_CLOCKWISE
+             * However, vk::FrontFace::CLOCKWISE seems to work for ash
+             * Value seems to be flipped somehow???
+             */
             .front_face(vk::FrontFace::CLOCKWISE)
             .depth_bias_enable(false);
 
@@ -111,8 +116,9 @@ mod _pipeline {
             .blend_constants([0.0, 0.0, 0.0, 0.0]); // Optional
 
         // Pipeline layout
+        let set_layouts = [descriptor_set_layout];
         let pipeline_layout_info =
-            vk::PipelineLayoutCreateInfo::builder().set_layouts(&descriptor_set_layouts);
+            vk::PipelineLayoutCreateInfo::builder().set_layouts(&set_layouts);
         let pipeline_layout = unsafe {
             device
                 .create_pipeline_layout(&pipeline_layout_info, None)
@@ -147,6 +153,26 @@ mod _pipeline {
         (graphics_pipeline[0], pipeline_layout)
     }
 
+    pub fn create_descriptor_set_layout(device: &ash::Device) -> vk::DescriptorSetLayout {
+        // Descriptor set layout
+        let ubo_layout_bindings = [vk::DescriptorSetLayoutBinding::builder()
+            .binding(0)
+            .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+            .descriptor_count(1)
+            .stage_flags(vk::ShaderStageFlags::VERTEX)
+            .build()];
+        let layout_info =
+            vk::DescriptorSetLayoutCreateInfo::builder().bindings(&ubo_layout_bindings);
+
+        let descriptor_set_layout = unsafe {
+            device
+                .create_descriptor_set_layout(&layout_info, None)
+                .expect("failed to create descriptor set layout!")
+        };
+
+        descriptor_set_layout
+    }
+
     fn create_shader_module(device: &ash::Device, code: &Vec<u8>) -> vk::ShaderModule {
         // FIXED: Major bug when creating shader module!
         let create_info = vk::ShaderModuleCreateInfo {
@@ -163,4 +189,4 @@ mod _pipeline {
     }
 }
 
-pub use _pipeline::create_graphics_pipeline;
+pub use _pipeline::{create_descriptor_set_layout, create_graphics_pipeline};
