@@ -1,7 +1,7 @@
 mod _triangle {
     use vk_utils::{
         constants::{
-            hello_triangle, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
+            hello_triangle, texture, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
             VK_VALIDATION_LAYER_NAMES, WIDTH,
         },
         device::create_logical_device,
@@ -25,7 +25,7 @@ mod _triangle {
         KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn, KhrPortabilitySubsetFn,
     };
 
-    pub struct HelloTriangleTriangle {
+    pub struct HelloTriangle {
         _entry: Entry,
         instance: Instance,
 
@@ -56,6 +56,9 @@ mod _triangle {
         pipeline_layout: vk::PipelineLayout,
         graphics_pipeline: vk::Pipeline,
 
+        texture_image: vk::Image,
+        texture_image_memory: vk::DeviceMemory,
+
         vertex_buffer: vk::Buffer,
         vertex_buffer_memory: vk::DeviceMemory,
 
@@ -81,7 +84,7 @@ mod _triangle {
         is_framebuffer_resized: bool,
     }
 
-    impl HelloTriangleTriangle {
+    impl HelloTriangle {
         pub fn new(window: &Window) -> Self {
             use cgmath::SquareMatrix;
 
@@ -138,6 +141,14 @@ mod _triangle {
 
             let command_pool = vk_utils::command::create_command_pool(&device, &family_indices);
 
+            let (texture_image, texture_image_memory) = Self::create_texture_image(
+                &device,
+                command_pool,
+                &physical_device_memory_properties,
+                &std::path::Path::new(texture::TEXTURE_PATH),
+                graphics_queue,
+            );
+
             let (vertex_buffer, vertex_buffer_memory) = Self::create_vertex_buffer(
                 &instance,
                 &device,
@@ -154,15 +165,18 @@ mod _triangle {
                 graphics_queue,
             );
 
-            let (uniform_buffers, uniform_buffers_memory) = Self::create_uniform_buffer(
+            let (uniform_buffers, uniform_buffers_memory) =
+                vk_types::UniformBufferObject::create_uniform_buffer(
+                    &device,
+                    &physical_device_memory_properties,
+                    swapchain_info.swapchain_images.len(),
+                );
+
+            let descriptor_pool = vk_types::UniformBufferObject::create_descriptor_pool(
                 &device,
-                &physical_device_memory_properties,
                 swapchain_info.swapchain_images.len(),
             );
-
-            let descriptor_pool =
-                Self::create_descriptor_pool(&device, swapchain_info.swapchain_images.len());
-            let descriptor_sets = Self::create_descriptor_sets(
+            let descriptor_sets = vk_types::UniformBufferObject::create_descriptor_sets(
                 &device,
                 descriptor_pool,
                 descriptor_set_layout,
@@ -215,6 +229,9 @@ mod _triangle {
                 descriptor_set_layout,
                 pipeline_layout,
                 graphics_pipeline,
+
+                texture_image,
+                texture_image_memory,
 
                 vertex_buffer,
                 vertex_buffer_memory,
@@ -461,103 +478,293 @@ mod _triangle {
             (index_buffer, index_buffer_memory)
         }
 
-        fn create_uniform_buffer(
+        fn create_texture_image(
             device: &ash::Device,
+            command_pool: vk::CommandPool,
             device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-            swapchain_image_size: usize,
-        ) -> (Vec<vk::Buffer>, Vec<vk::DeviceMemory>) {
-            // Uniform buffer
+            image_path: &std::path::Path,
+            graphics_queue: vk::Queue,
+        ) -> (vk::Image, vk::DeviceMemory) {
             use std::mem::size_of;
 
-            let buffer_size = size_of::<vk_types::UniformBufferObject>();
+            // Loading an image
+            let mut image_obj = image::open(image_path).unwrap();
+            image_obj = image_obj.flipv();
 
-            let mut uniform_buffers: Vec<vk::Buffer> = Vec::new();
-            let mut uniform_buffers_memory: Vec<vk::DeviceMemory> = Vec::new();
+            let (tex_width, tex_height) = (image_obj.width(), image_obj.height());
+            let image_size =
+                (size_of::<u8>() as u32 * tex_width * tex_height * 4) as vk::DeviceSize;
+            let image_data = match &image_obj {
+                image::DynamicImage::ImageLuma8(_) | image::DynamicImage::ImageRgb8(_) => {
+                    image_obj.to_rgba8().into_raw()
+                }
+                image::DynamicImage::ImageLumaA8(_) | image::DynamicImage::ImageRgba8(_) => {
+                    image_obj.into_bytes()
+                }
+                &_ => panic!("invalid image format!"),
+            };
 
-            for _ in 0..swapchain_image_size {
-                let (uniform_buffer, uniform_buffer_memory) = vk_utils::buffer::create_buffer(
-                    device,
-                    buffer_size as u64,
-                    vk::BufferUsageFlags::UNIFORM_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                    device_memory_properties,
-                );
-
-                uniform_buffers.push(uniform_buffer);
-                uniform_buffers_memory.push(uniform_buffer_memory);
+            if image_size <= 0 {
+                panic!("failed to load texture image!");
             }
 
-            (uniform_buffers, uniform_buffers_memory)
+            // Staging buffer
+            let (staging_buffer, staging_buffer_memory) = vk_utils::buffer::create_buffer(
+                device,
+                image_size,
+                vk::BufferUsageFlags::TRANSFER_SRC,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                device_memory_properties,
+            );
+
+            let data = unsafe {
+                device
+                    .map_memory(
+                        staging_buffer_memory,
+                        0,
+                        image_size,
+                        vk::MemoryMapFlags::empty(),
+                    )
+                    .expect("failed to map memory!") as *mut u8
+            };
+
+            unsafe {
+                data.copy_from_nonoverlapping(image_data.as_ptr(), image_data.len());
+                device.unmap_memory(staging_buffer_memory);
+            }
+
+            let (texture_image, texture_image_memory) = Self::create_image(
+                device,
+                tex_width,
+                tex_height,
+                vk::Format::R8G8B8A8_SRGB,
+                vk::ImageTiling::OPTIMAL,
+                vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                device_memory_properties,
+            );
+
+            // Preparing the texture image
+            Self::transition_image_layout(
+                device,
+                command_pool,
+                texture_image,
+                vk::Format::R8G8B8A8_SRGB,
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                graphics_queue,
+            );
+
+            Self::copy_buffer_to_image(
+                device,
+                command_pool,
+                staging_buffer,
+                texture_image,
+                graphics_queue,
+                tex_width,
+                tex_height,
+            );
+
+            Self::transition_image_layout(
+                device,
+                command_pool,
+                texture_image,
+                vk::Format::R8G8B8A8_SRGB,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                graphics_queue,
+            );
+
+            unsafe {
+                device.destroy_buffer(staging_buffer, None);
+                device.free_memory(staging_buffer_memory, None);
+            }
+
+            (texture_image, texture_image_memory)
         }
 
-        fn create_descriptor_pool(
+        fn create_image(
             device: &ash::Device,
-            swapchain_image_size: usize,
-        ) -> vk::DescriptorPool {
-            // Descriptor pool
-            let pool_sizes = [vk::DescriptorPoolSize::builder()
-                .ty(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(swapchain_image_size as u32)
-                .build()];
+            width: u32,
+            height: u32,
+            format: vk::Format,
+            tiling: vk::ImageTiling,
+            usage: vk::ImageUsageFlags,
+            properties: vk::MemoryPropertyFlags,
+            device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+        ) -> (vk::Image, vk::DeviceMemory) {
+            // Texture image
+            let image_info = vk::ImageCreateInfo::builder()
+                .image_type(vk::ImageType::TYPE_2D)
+                .extent(vk::Extent3D {
+                    width,
+                    height,
+                    depth: 1,
+                })
+                .mip_levels(1)
+                .array_layers(1)
+                .format(format)
+                .tiling(tiling)
+                .initial_layout(vk::ImageLayout::UNDEFINED)
+                .usage(usage)
+                .samples(vk::SampleCountFlags::TYPE_1)
+                .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
-            let pool_info = vk::DescriptorPoolCreateInfo::builder()
-                .pool_sizes(&pool_sizes)
-                .max_sets(swapchain_image_size as u32);
+            let image = unsafe {
+                device
+                    .create_image(&image_info, None)
+                    .expect("failed to create image!")
+            };
+
+            let mem_requirements = unsafe { device.get_image_memory_requirements(image) };
+
+            let alloc_info = vk::MemoryAllocateInfo::builder()
+                .allocation_size(mem_requirements.size)
+                .memory_type_index(vk_utils::buffer::find_memory_type(
+                    mem_requirements.memory_type_bits,
+                    properties,
+                    device_memory_properties,
+                ));
+
+            let image_memory = unsafe {
+                device
+                    .allocate_memory(&alloc_info, None)
+                    .expect("failed to allocate image memory!")
+            };
 
             unsafe {
                 device
-                    .create_descriptor_pool(&pool_info, None)
-                    .expect("failed to create descriptor pool!")
+                    .bind_image_memory(image, image_memory, 0)
+                    .expect("failed to bind image memory!");
             }
+
+            (image, image_memory)
         }
 
-        fn create_descriptor_sets(
+        fn transition_image_layout(
             device: &ash::Device,
-            descriptor_pool: vk::DescriptorPool,
-            descriptor_set_layout: vk::DescriptorSetLayout,
-            uniform_buffers: &Vec<vk::Buffer>,
-            swapchain_image_size: usize,
-        ) -> Vec<vk::DescriptorSet> {
-            // Descriptor set
-            use std::mem::size_of;
+            command_pool: vk::CommandPool,
+            image: vk::Image,
+            format: vk::Format,
+            old_layout: vk::ImageLayout,
+            new_layout: vk::ImageLayout,
+            graphics_queue: vk::Queue,
+        ) {
+            use vk_utils::command::{begin_single_time_commands, end_single_time_commands};
 
-            let mut layouts: Vec<vk::DescriptorSetLayout> = Vec::new();
+            // Layout transitions
+            let command_buffer = begin_single_time_commands(device, command_pool);
 
-            for _ in 0..swapchain_image_size {
-                layouts.push(descriptor_set_layout);
-            }
-
-            let alloc_info = vk::DescriptorSetAllocateInfo::builder()
-                .descriptor_pool(descriptor_pool)
-                .set_layouts(&layouts);
-
-            let descriptor_sets = unsafe {
-                device
-                    .allocate_descriptor_sets(&alloc_info)
-                    .expect("failed to allocate descriptor sets!")
+            // Transition barrier mask
+            let mode = if old_layout == vk::ImageLayout::UNDEFINED
+                && new_layout == vk::ImageLayout::TRANSFER_DST_OPTIMAL
+            {
+                0
+            } else if old_layout == vk::ImageLayout::TRANSFER_DST_OPTIMAL
+                && new_layout == vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+            {
+                1
+            } else {
+                panic!("unsupported layout transition!");
             };
 
-            for (i, &descriptor_set) in descriptor_sets.iter().enumerate() {
-                let buffer_infos = [vk::DescriptorBufferInfo::builder()
-                    .buffer(uniform_buffers[i])
-                    .offset(0)
-                    .range(size_of::<vk_types::UniformBufferObject>() as u64)
-                    .build()];
+            let src_access_mask = if mode == 0 {
+                vk::AccessFlags::empty()
+            } else {
+                vk::AccessFlags::TRANSFER_WRITE
+            };
+            let dst_access_mask = if mode == 0 {
+                vk::AccessFlags::TRANSFER_WRITE
+            } else {
+                vk::AccessFlags::SHADER_READ
+            };
 
-                let descriptor_write = [vk::WriteDescriptorSet::builder()
-                    .dst_set(descriptor_set)
-                    .dst_binding(0)
-                    .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .buffer_info(&buffer_infos)
-                    .build()];
+            let source_stage = if mode == 0 {
+                vk::PipelineStageFlags::TOP_OF_PIPE
+            } else {
+                vk::PipelineStageFlags::TRANSFER
+            };
+            let destination_stage = if mode == 0 {
+                vk::PipelineStageFlags::TRANSFER
+            } else {
+                vk::PipelineStageFlags::FRAGMENT_SHADER
+            };
 
-                unsafe {
-                    device.update_descriptor_sets(&descriptor_write, &[]);
-                }
+            let image_subresource_range = vk::ImageSubresourceRange::builder()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .base_mip_level(0)
+                .level_count(1)
+                .base_array_layer(0)
+                .layer_count(0)
+                .build();
+            let barriers = [vk::ImageMemoryBarrier::builder()
+                .old_layout(old_layout)
+                .new_layout(new_layout)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .image(image)
+                .subresource_range(image_subresource_range)
+                .src_access_mask(src_access_mask)
+                .dst_access_mask(dst_access_mask)
+                .build()];
+
+            unsafe {
+                device.cmd_pipeline_barrier(
+                    command_buffer,
+                    source_stage,
+                    destination_stage,
+                    vk::DependencyFlags::empty(),
+                    &[],
+                    &[],
+                    &barriers,
+                );
             }
 
-            descriptor_sets
+            end_single_time_commands(device, command_pool, command_buffer, graphics_queue);
+        }
+
+        fn copy_buffer_to_image(
+            device: &ash::Device,
+            command_pool: vk::CommandPool,
+            buffer: vk::Buffer,
+            image: vk::Image,
+            graphics_queue: vk::Queue,
+            width: u32,
+            height: u32,
+        ) {
+            use vk_utils::command::{begin_single_time_commands, end_single_time_commands};
+
+            // Copying buffer to image
+            let command_buffer = begin_single_time_commands(device, command_pool);
+            let regions = [vk::BufferImageCopy::builder()
+                .buffer_offset(0)
+                .buffer_row_length(0)
+                .buffer_image_height(0)
+                .image_subresource(vk::ImageSubresourceLayers {
+                    aspect_mask: vk::ImageAspectFlags::COLOR,
+                    mip_level: 0,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                })
+                .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+                .image_extent(vk::Extent3D {
+                    width,
+                    height,
+                    depth: 1,
+                })
+                .build()];
+
+            unsafe {
+                device.cmd_copy_buffer_to_image(
+                    command_buffer,
+                    buffer,
+                    image,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &regions,
+                );
+            }
+
+            end_single_time_commands(device, command_pool, command_buffer, graphics_queue);
         }
 
         pub fn draw_frame(&mut self, delta_time: f32) {
@@ -787,7 +994,7 @@ mod _triangle {
         }
     }
 
-    impl Drop for HelloTriangleTriangle {
+    impl Drop for HelloTriangle {
         fn drop(&mut self) {
             unsafe {
                 for i in 0..MAX_FRAMES_IN_FLIGHT {
@@ -815,6 +1022,9 @@ mod _triangle {
                 self.device.destroy_buffer(self.vertex_buffer, None);
                 self.device.free_memory(self.vertex_buffer_memory, None);
 
+                self.device.destroy_image(self.texture_image, None);
+                self.device.free_memory(self.texture_image_memory, None);
+
                 self.device
                     .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
 
@@ -835,4 +1045,4 @@ mod _triangle {
     }
 }
 
-pub use _triangle::HelloTriangleTriangle;
+pub use _triangle::HelloTriangle;

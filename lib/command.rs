@@ -62,6 +62,62 @@ mod _command {
         command_buffers
     }
 
+    pub fn begin_single_time_commands(
+        device: &ash::Device,
+        command_pool: vk::CommandPool,
+    ) -> vk::CommandBuffer {
+        // Layout transitions
+        let alloc_info = vk::CommandBufferAllocateInfo::builder()
+            .level(vk::CommandBufferLevel::PRIMARY)
+            .command_pool(command_pool)
+            .command_buffer_count(1);
+
+        let command_buffer = unsafe {
+            device
+                .allocate_command_buffers(&alloc_info)
+                .expect("failed to allocate command buffers!")
+        }[0];
+
+        let begin_info = vk::CommandBufferBeginInfo::builder()
+            .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+
+        unsafe {
+            device
+                .begin_command_buffer(command_buffer, &begin_info)
+                .expect("failed to begin command buffer!");
+        }
+
+        command_buffer
+    }
+
+    pub fn end_single_time_commands(
+        device: &ash::Device,
+        command_pool: vk::CommandPool,
+        command_buffer: vk::CommandBuffer,
+        graphics_queue: vk::Queue,
+    ) {
+        unsafe {
+            device
+                .end_command_buffer(command_buffer)
+                .expect("failed to end command buffer!");
+        }
+
+        let command_buffers = [command_buffer];
+        let submit_info = [vk::SubmitInfo::builder()
+            .command_buffers(&command_buffers)
+            .build()];
+
+        unsafe {
+            device
+                .queue_submit(graphics_queue, &submit_info, vk::Fence::null())
+                .expect("failed to submit queue!");
+            device
+                .queue_wait_idle(graphics_queue)
+                .expect("queue failed to wait idle!");
+            device.free_command_buffers(command_pool, &command_buffers);
+        }
+    }
+
     pub fn record_command_buffer(
         device: &ash::Device,
         command_buffer: vk::CommandBuffer,
@@ -180,4 +236,7 @@ mod _command {
     }
 }
 
-pub use _command::{create_command_buffers, create_command_pool, record_command_buffer};
+pub use _command::{
+    begin_single_time_commands, create_command_buffers, create_command_pool,
+    end_single_time_commands, record_command_buffer,
+};

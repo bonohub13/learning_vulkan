@@ -81,3 +81,7 @@ pub mod hello_triangle {
 
     pub const INDICES: [u32; 6] = [0, 1, 2, 2, 3, 0];
 }
+
+pub mod texture {
+    pub const TEXTURE_PATH: &'static str = "assets/texture.jpg";
+}

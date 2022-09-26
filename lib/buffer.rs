@@ -51,25 +51,7 @@ mod _buffer {
         size: vk::DeviceSize,
     ) {
         // Using a staging buffer
-        let alloc_info = vk::CommandBufferAllocateInfo::builder()
-            .level(vk::CommandBufferLevel::PRIMARY)
-            .command_pool(command_pool)
-            .command_buffer_count(1);
-        let command_buffers = unsafe {
-            device
-                .allocate_command_buffers(&alloc_info)
-                .expect("failed to allocate command buffers!")
-        };
-        let command_buffers = [command_buffers[0]];
-
-        let begin_info = vk::CommandBufferBeginInfo::builder()
-            .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
-
-        unsafe {
-            device
-                .begin_command_buffer(command_buffers[0], &begin_info)
-                .expect("failed to begin command buffer!");
-        }
+        let command_buffer = crate::command::begin_single_time_commands(device, command_pool);
 
         let copy_regions = [vk::BufferCopy::builder()
             .src_offset(0) // Optional
@@ -78,26 +60,15 @@ mod _buffer {
             .build()];
 
         unsafe {
-            device.cmd_copy_buffer(command_buffers[0], src_buffer, dst_buffer, &copy_regions);
-            device
-                .end_command_buffer(command_buffers[0])
-                .expect("failed to end command buffer!");
+            device.cmd_copy_buffer(command_buffer, src_buffer, dst_buffer, &copy_regions);
         }
 
-        let submit_infos = [vk::SubmitInfo::builder()
-            .command_buffers(&command_buffers)
-            .build()];
-
-        unsafe {
-            device
-                .queue_submit(graphics_queue, &submit_infos, vk::Fence::null())
-                .expect("failed to submit queue!");
-            device
-                .queue_wait_idle(graphics_queue)
-                .expect("failed to wait idle for queue!");
-
-            device.free_command_buffers(command_pool, &command_buffers);
-        }
+        crate::command::end_single_time_commands(
+            device,
+            command_pool,
+            command_buffer,
+            graphics_queue,
+        );
     }
 
     pub fn find_memory_type(

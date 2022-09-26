@@ -2,7 +2,7 @@ mod hello_triangle_application;
 
 use vk_utils::constants::*;
 
-use hello_triangle_application::HelloTriangleTriangle;
+use hello_triangle_application::HelloTriangle;
 
 use winit::{
     dpi::PhysicalSize,
@@ -21,7 +21,7 @@ fn main() {
         .build(&event_loop)
         .unwrap();
     let mut tick_counter = vk_utils::fps::FPSLimiter::new();
-    let mut app = HelloTriangleTriangle::new(&window);
+    let mut app = HelloTriangle::new(&window);
 
     // Application loop
     event_loop.run(move |event, _, control_flow| {
