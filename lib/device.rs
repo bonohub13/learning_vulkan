@@ -44,8 +44,12 @@ mod _physical_dev {
         } else {
             false
         };
+        let supported_features = unsafe { instance.get_physical_device_features(physical_device) };
 
-        indices.is_complete() && extensions_supported && swap_chain_adequate
+        indices.is_complete()
+            && extensions_supported
+            && swap_chain_adequate
+            && supported_features.sampler_anisotropy == 1
     }
 
     fn check_device_extension_support(
@@ -144,7 +148,9 @@ mod _physical_dev {
             })
             .collect();
 
-        let device_features = vk::PhysicalDeviceFeatures::default();
+        let device_features = vk::PhysicalDeviceFeatures::builder()
+            // Anistropy device feature
+            .sampler_anisotropy(true);
 
         let required_validation_layers_raw: Vec<CString> = VK_VALIDATION_LAYER_NAMES
             .required_validation_layers

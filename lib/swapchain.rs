@@ -123,15 +123,10 @@ mod _swapchain {
         let swap_chain_image_views: Vec<vk::ImageView> = images
             .iter()
             .map(|&image| {
+                /*
                 let create_info = vk::ImageViewCreateInfo::builder()
                     .view_type(vk::ImageViewType::TYPE_2D)
                     .format(surface_format)
-                    .components(vk::ComponentMapping {
-                        r: vk::ComponentSwizzle::IDENTITY,
-                        g: vk::ComponentSwizzle::IDENTITY,
-                        b: vk::ComponentSwizzle::IDENTITY,
-                        a: vk::ComponentSwizzle::IDENTITY,
-                    })
                     .subresource_range(vk::ImageSubresourceRange {
                         aspect_mask: vk::ImageAspectFlags::COLOR,
                         base_mip_level: 0,
@@ -146,11 +141,45 @@ mod _swapchain {
                         .create_image_view(&create_info, None)
                         .expect("failed to create image view!")
                 }
+                 */
+                create_image_view(device, image, surface_format)
             })
             .collect();
 
         swap_chain_image_views
     }
+
+    pub fn create_image_view(
+        device: &ash::Device,
+        texture_image: vk::Image,
+        format: vk::Format,
+    ) -> vk::ImageView {
+        let view_info = vk::ImageViewCreateInfo::builder()
+            .image(texture_image)
+            .view_type(vk::ImageViewType::TYPE_2D)
+            .format(format)
+            .components(vk::ComponentMapping {
+                r: vk::ComponentSwizzle::IDENTITY,
+                g: vk::ComponentSwizzle::IDENTITY,
+                b: vk::ComponentSwizzle::IDENTITY,
+                a: vk::ComponentSwizzle::IDENTITY,
+            })
+            .subresource_range(vk::ImageSubresourceRange {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            });
+
+        unsafe {
+            device
+                .create_image_view(&view_info, None)
+                .expect("failed to create texture image view!")
+        }
+    }
 }
 
-pub use _swapchain::{create_image_views, create_swap_chain, query_swapchain_support};
+pub use _swapchain::{
+    create_image_view, create_image_views, create_swap_chain, query_swapchain_support,
+};

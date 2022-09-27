@@ -64,6 +64,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Descriptor pool and sets](https://vulkan-tutorial.com/Uniform_buffers/Descriptor_pool_and_sets)
 - [chapter 23](https://github.com/bonohub13/learning_vulkan/tree/chapter_23)
     - [Images](https://vulkan-tutorial.com/Texture_mapping/Images)
+- [chapter 24](https://github.com/bonohub13/learning_vulkan/tree/chapter_24)
+    - [Image view and sampler](https://vulkan-tutorial.com/Texture_mapping/Image_view_and_sampler)
 
 ## Fatal commits
 - September 13, 2022 [FIXED: September 18, 2022]
