@@ -7,6 +7,9 @@ Learning Vulkan via Ash sample code and [vulkan-tutorial](https://vulkan-tutoria
 
 https://user-images.githubusercontent.com/33274231/192131063-4ce5db7a-f49b-43bd-b57f-5540e941e0a0.mp4
 
+https://user-images.githubusercontent.com/33274231/192804409-828aca43-3e0d-46a9-bafa-93ae0072bad2.mp4
+
+https://user-images.githubusercontent.com/33274231/192804498-993f2900-d466-4883-9df1-a3716010387f.mp4
 
 ## So, what is this all about?
 This is a direct implementation of the [Vulkan Tutorial](https://vulkan-tutorial.com) using [Ash](https://docs.rs/ash). \
