@@ -1,4 +1,4 @@
-mod _triangle {
+mod _texture {
     use vk_utils::{
         constants::{
             hello_triangle, texture, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
@@ -25,7 +25,7 @@ mod _triangle {
         KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn, KhrPortabilitySubsetFn,
     };
 
-    pub struct HelloTriangle {
+    pub struct Textures {
         _entry: Entry,
         instance: Instance,
 
@@ -87,7 +87,7 @@ mod _triangle {
         is_framebuffer_resized: bool,
     }
 
-    impl HelloTriangle {
+    impl Textures {
         pub fn new(window: &Window) -> Self {
             use cgmath::SquareMatrix;
 
@@ -127,8 +127,8 @@ mod _triangle {
             let render_pass =
                 vk_utils::render_pass::create_render_pass(&device, swapchain_info.swapchain_format);
 
-            let descriptor_set_layout = vk_utils::pipeline::create_descriptor_set_layout(&device);
-            let (graphics_pipeline, pipeline_layout) = vk_utils::pipeline::create_graphics_pipeline(
+            let descriptor_set_layout = vk_utils::texture::create_descriptor_set_layout(&device);
+            let (graphics_pipeline, pipeline_layout) = Self::create_graphics_pipeline(
                 &device,
                 swapchain_info.swapchain_extent,
                 render_pass.clone(),
@@ -358,76 +358,157 @@ mod _triangle {
             }
         }
 
-        #[allow(unused)]
-        fn create_vertex_buffer(
-            instance: &ash::Instance,
+        #[inline]
+        fn create_graphics_pipeline(
             device: &ash::Device,
-            physical_device: vk::PhysicalDevice,
-            command_pool: vk::CommandPool,
-            graphics_queue: vk::Queue,
-        ) -> (vk::Buffer, vk::DeviceMemory) {
-            // Buffer creation
-            use std::mem::size_of_val;
+            swapchain_extent: vk::Extent2D,
+            render_pass: vk::RenderPass,
+            descriptor_set_layout: vk::DescriptorSetLayout,
+        ) -> (vk::Pipeline, vk::PipelineLayout) {
+            use std::path::Path;
 
-            // Using a stagin buffer
-            let buffer_size = size_of_val(&hello_triangle::VERTICES) as vk::DeviceSize;
-            let device_mem_properties =
-                unsafe { instance.get_physical_device_memory_properties(physical_device) };
+            let vert_shader_code =
+                vk_utils::tools::read_shader_code(Path::new("shaders/spv/hello-triangle_vert.spv"));
+            let frag_shader_code =
+                vk_utils::tools::read_shader_code(Path::new("shaders/spv/hello-triangle_frag.spv"));
 
-            let (staging_buffer, staging_buffer_memory) = vk_utils::buffer::create_buffer(
-                device,
-                buffer_size,
-                vk::BufferUsageFlags::TRANSFER_SRC,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                &device_mem_properties,
-            );
+            let vert_shader_module =
+                vk_utils::pipeline::create_shader_module(device, &vert_shader_code);
+            let frag_shader_module =
+                vk_utils::pipeline::create_shader_module(device, &frag_shader_code);
 
-            // Filling the vertex buffer
-            let data = unsafe {
+            let main_function_name = CString::new("main").unwrap();
+
+            let shader_stages = [
+                // Vertex shader
+                vk::PipelineShaderStageCreateInfo::builder()
+                    .stage(vk::ShaderStageFlags::VERTEX)
+                    .module(vert_shader_module)
+                    .name(&main_function_name)
+                    .build(),
+                // Fragment shader
+                vk::PipelineShaderStageCreateInfo::builder()
+                    .stage(vk::ShaderStageFlags::FRAGMENT)
+                    .module(frag_shader_module)
+                    .name(&main_function_name)
+                    .build(),
+            ];
+
+            // Dynamic State
+            let dynamic_states = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
+            let dynamic_state =
+                vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_states);
+
+            // Pipeline vertex input
+            let binding_descriptions = vk_types::VertexWithTexture2D::get_binding_description();
+            let attribute_descriptions =
+                vk_types::VertexWithTexture2D::get_attribute_descriptions();
+
+            // Vertex input
+            let vertex_input_info = vk::PipelineVertexInputStateCreateInfo::builder()
+                .vertex_binding_descriptions(&binding_descriptions)
+                .vertex_attribute_descriptions(&attribute_descriptions);
+
+            // Input assembly
+            let input_assembly = vk::PipelineInputAssemblyStateCreateInfo::builder()
+                .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
+                .primitive_restart_enable(false);
+
+            // Viewports and scissors
+            let viewports = [vk::Viewport::builder()
+                .x(0.0)
+                .y(0.0)
+                .width(swapchain_extent.width as f32)
+                .height(swapchain_extent.height as f32)
+                .min_depth(0.0)
+                .max_depth(1.0)
+                .build()];
+            let scissors = [vk::Rect2D::builder()
+                .offset(vk::Offset2D { x: 0, y: 0 })
+                .extent(swapchain_extent)
+                .build()];
+            let viewport_state = vk::PipelineViewportStateCreateInfo::builder()
+                .viewports(&viewports)
+                .scissors(&scissors);
+
+            // Rasterizer
+            let rasterizer = vk::PipelineRasterizationStateCreateInfo::builder()
+                .depth_clamp_enable(false)
+                .polygon_mode(vk::PolygonMode::FILL)
+                .line_width(1.0)
+                .cull_mode(vk::CullModeFlags::BACK)
+                /* TODO Research this! (UNKNOWN)
+                 * In the Vulkan Tutorial, front_face is using vk::FrontFace::COUNTER_CLOCKWISE
+                 * However, vk::FrontFace::CLOCKWISE seems to work for ash
+                 * Value seems to be flipped somehow???
+                 */
+                .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
+                .depth_bias_enable(false);
+
+            // Multisampling
+            let multisampling = vk::PipelineMultisampleStateCreateInfo::builder()
+                .sample_shading_enable(false)
+                .rasterization_samples(vk::SampleCountFlags::TYPE_1)
+                .min_sample_shading(1.0) // Optional
+                .alpha_to_coverage_enable(false) // Optional
+                .alpha_to_one_enable(false); // Optional
+
+            // Depth and stencil testing
+            // Skipping...
+
+            // Color blending
+            let color_blend_attachments = [vk::PipelineColorBlendAttachmentState::builder()
+                .color_write_mask(vk::ColorComponentFlags::RGBA)
+                .blend_enable(false)
+                .src_color_blend_factor(vk::BlendFactor::ONE) // Optional
+                .dst_color_blend_factor(vk::BlendFactor::ZERO) // Optional
+                .color_blend_op(vk::BlendOp::ADD) // Optional
+                .src_alpha_blend_factor(vk::BlendFactor::ONE) // Optional
+                .dst_alpha_blend_factor(vk::BlendFactor::ZERO) // Optional
+                .alpha_blend_op(vk::BlendOp::ADD) // Optional
+                .build()];
+            let color_blending = vk::PipelineColorBlendStateCreateInfo::builder()
+                .logic_op_enable(false)
+                .logic_op(vk::LogicOp::COPY) // Optional
+                .attachments(&color_blend_attachments)
+                .blend_constants([0.0, 0.0, 0.0, 0.0]); // Optional
+
+            // Pipeline layout
+            let set_layouts = [descriptor_set_layout];
+            let pipeline_layout_info =
+                vk::PipelineLayoutCreateInfo::builder().set_layouts(&set_layouts);
+            let pipeline_layout = unsafe {
                 device
-                    .map_memory(
-                        staging_buffer_memory,
-                        0,
-                        buffer_size,
-                        vk::MemoryMapFlags::empty(),
-                    )
-                    .expect("failed to map memory!")
-                    as *mut vk_utils::types::Vertex2D
+                    .create_pipeline_layout(&pipeline_layout_info, None)
+                    .expect("failed to create pipeline layout!")
+            };
+
+            // Conclusion
+            let pipeline_infos = [vk::GraphicsPipelineCreateInfo::builder()
+                .stages(&shader_stages)
+                .vertex_input_state(&vertex_input_info)
+                .input_assembly_state(&input_assembly)
+                .viewport_state(&viewport_state)
+                .rasterization_state(&rasterizer)
+                .multisample_state(&multisampling)
+                .color_blend_state(&color_blending)
+                .dynamic_state(&dynamic_state)
+                .layout(pipeline_layout)
+                .render_pass(render_pass)
+                .subpass(0)
+                .build()];
+            let graphics_pipeline = unsafe {
+                device
+                    .create_graphics_pipelines(vk::PipelineCache::null(), &pipeline_infos, None)
+                    .expect("failed to create graphics pipeline!")
             };
 
             unsafe {
-                data.copy_from_nonoverlapping(
-                    hello_triangle::VERTICES.as_ptr(),
-                    hello_triangle::VERTICES.len(),
-                );
-
-                device.unmap_memory(staging_buffer_memory);
+                device.destroy_shader_module(vert_shader_module, None);
+                device.destroy_shader_module(frag_shader_module, None);
             }
 
-            let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_buffer(
-                device,
-                buffer_size,
-                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                &device_mem_properties,
-            );
-
-            vk_utils::buffer::copy_buffer(
-                device,
-                graphics_queue,
-                command_pool,
-                staging_buffer,
-                vertex_buffer,
-                buffer_size,
-            );
-
-            // Cleaning up staging buffer
-            unsafe {
-                device.destroy_buffer(staging_buffer, None);
-                device.free_memory(staging_buffer_memory, None);
-            }
-
-            (vertex_buffer, vertex_buffer_memory)
+            (graphics_pipeline[0], pipeline_layout)
         }
 
         fn create_index_buffer(
@@ -760,7 +841,7 @@ mod _triangle {
 
             self.render_pass =
                 vk_utils::render_pass::create_render_pass(&self.device, self.swapchain_format);
-            let (graphics_pipeline, pipeline_layout) = vk_utils::pipeline::create_graphics_pipeline(
+            let (graphics_pipeline, pipeline_layout) = Self::create_graphics_pipeline(
                 &self.device,
                 swapchain_info.swapchain_extent,
                 self.render_pass,
@@ -791,7 +872,7 @@ mod _triangle {
         }
     }
 
-    impl Drop for HelloTriangle {
+    impl Drop for Textures {
         fn drop(&mut self) {
             unsafe {
                 for i in 0..MAX_FRAMES_IN_FLIGHT {
@@ -846,4 +927,4 @@ mod _triangle {
     }
 }
 
-pub use _triangle::HelloTriangle;
+pub use _texture::Textures;

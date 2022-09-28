@@ -1,5 +1,8 @@
 mod _pipeline {
-    use crate::{self as vk_utils, types::Vertex2D};
+    use crate::{
+        self as vk_utils,
+        types::{Vertex2D, VertexWithTexture2D},
+    };
 
     use ash::vk;
     use std::ffi::CString;
@@ -84,7 +87,7 @@ mod _pipeline {
              * However, vk::FrontFace::CLOCKWISE seems to work for ash
              * Value seems to be flipped somehow???
              */
-            .front_face(vk::FrontFace::CLOCKWISE)
+            .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
             .depth_bias_enable(false);
 
         // Multisampling
@@ -173,7 +176,7 @@ mod _pipeline {
         descriptor_set_layout
     }
 
-    fn create_shader_module(device: &ash::Device, code: &Vec<u8>) -> vk::ShaderModule {
+    pub fn create_shader_module(device: &ash::Device, code: &Vec<u8>) -> vk::ShaderModule {
         // FIXED: Major bug when creating shader module!
         let create_info = vk::ShaderModuleCreateInfo {
             code_size: code.len(),
@@ -189,4 +192,4 @@ mod _pipeline {
     }
 }
 
-pub use _pipeline::{create_descriptor_set_layout, create_graphics_pipeline};
+pub use _pipeline::{create_descriptor_set_layout, create_graphics_pipeline, create_shader_module};

@@ -13,6 +13,7 @@ pub mod pipeline;
 pub mod render_pass;
 pub mod surface;
 pub mod swapchain;
+pub mod texture;
 
 // Types and objects made just to make things work will be under here!
 

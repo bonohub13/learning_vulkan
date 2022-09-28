@@ -2,110 +2,6 @@ mod _image {
     use crate as vk_utils;
     use ash::vk;
 
-    pub fn create_texture_image(
-        device: &ash::Device,
-        command_pool: vk::CommandPool,
-        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-        image_path: &std::path::Path,
-        graphics_queue: vk::Queue,
-    ) -> (vk::Image, vk::DeviceMemory) {
-        use std::mem::size_of;
-
-        // Loading an image
-        let mut image_obj = image::open(image_path).unwrap();
-        image_obj = image_obj.flipv();
-
-        let (tex_width, tex_height) = (image_obj.width(), image_obj.height());
-        let image_size = (size_of::<u8>() as u32 * tex_width * tex_height * 4) as vk::DeviceSize;
-        let image_data = match &image_obj {
-            image::DynamicImage::ImageLuma8(_) | image::DynamicImage::ImageRgb8(_) => {
-                image_obj.to_rgba8().into_raw()
-            }
-            image::DynamicImage::ImageLumaA8(_) | image::DynamicImage::ImageRgba8(_) => {
-                image_obj.into_bytes()
-            }
-            &_ => panic!("invalid image format!"),
-        };
-
-        if image_size <= 0 {
-            panic!("failed to load texture image!");
-        }
-
-        // Staging buffer
-        let (staging_buffer, staging_buffer_memory) = vk_utils::buffer::create_buffer(
-            device,
-            image_size,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            device_memory_properties,
-        );
-
-        let data = unsafe {
-            device
-                .map_memory(
-                    staging_buffer_memory,
-                    0,
-                    image_size,
-                    vk::MemoryMapFlags::empty(),
-                )
-                .expect("failed to map memory!") as *mut u8
-        };
-
-        unsafe {
-            data.copy_from_nonoverlapping(image_data.as_ptr(), image_data.len());
-            device.unmap_memory(staging_buffer_memory);
-        }
-
-        let (texture_image, texture_image_memory) = create_image(
-            device,
-            tex_width,
-            tex_height,
-            vk::Format::R8G8B8A8_SRGB,
-            vk::ImageTiling::OPTIMAL,
-            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            device_memory_properties,
-        );
-
-        // Preparing the texture image
-        transition_image_layout(
-            device,
-            command_pool,
-            texture_image,
-            vk::Format::R8G8B8A8_SRGB,
-            vk::ImageLayout::UNDEFINED,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            graphics_queue,
-        );
-
-        copy_buffer_to_image(
-            device,
-            command_pool,
-            staging_buffer,
-            texture_image,
-            graphics_queue,
-            tex_width,
-            tex_height,
-        );
-
-        transition_image_layout(
-            device,
-            command_pool,
-            texture_image,
-            vk::Format::R8G8B8A8_SRGB,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-            graphics_queue,
-        );
-
-        unsafe {
-            device.destroy_buffer(staging_buffer, None);
-            device.free_memory(staging_buffer_memory, None);
-        }
-
-        (texture_image, texture_image_memory)
-    }
-
     pub fn create_image(
         device: &ash::Device,
         width: u32,
@@ -218,7 +114,7 @@ mod _image {
             .base_mip_level(0)
             .level_count(1)
             .base_array_layer(0)
-            .layer_count(0)
+            .layer_count(1)
             .build();
         let barriers = [vk::ImageMemoryBarrier::builder()
             .old_layout(old_layout)
@@ -291,6 +187,4 @@ mod _image {
     }
 }
 
-pub use _image::{
-    copy_buffer_to_image, create_image, create_texture_image, transition_image_layout,
-};
+pub use _image::{copy_buffer_to_image, create_image, transition_image_layout};

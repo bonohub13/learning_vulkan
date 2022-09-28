@@ -150,7 +150,8 @@ mod _physical_dev {
 
         let device_features = vk::PhysicalDeviceFeatures::builder()
             // Anistropy device feature
-            .sampler_anisotropy(true);
+            .sampler_anisotropy(true)
+            .build();
 
         let required_validation_layers_raw: Vec<CString> = VK_VALIDATION_LAYER_NAMES
             .required_validation_layers

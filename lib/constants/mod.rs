@@ -84,4 +84,27 @@ pub mod hello_triangle {
 
 pub mod texture {
     pub const TEXTURE_PATH: &'static str = "assets/texture.jpg";
+
+    pub const VERTICES: [crate::types::VertexWithTexture2D; 4] = [
+        crate::types::VertexWithTexture2D {
+            pos: [-0.5, -0.5],
+            color: [1.0, 0.0, 0.0],
+            tex_coord: [0.0, 1.0],
+        },
+        crate::types::VertexWithTexture2D {
+            pos: [0.5, -0.5],
+            color: [0.0, 1.0, 0.0],
+            tex_coord: [0.0, 0.0],
+        },
+        crate::types::VertexWithTexture2D {
+            pos: [0.5, 0.5],
+            color: [0.0, 0.0, 1.0],
+            tex_coord: [1.0, 0.0],
+        },
+        crate::types::VertexWithTexture2D {
+            pos: [-0.5, 0.5],
+            color: [1.0, 1.0, 1.0],
+            tex_coord: [1.0, 1.0],
+        },
+    ];
 }
