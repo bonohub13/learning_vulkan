@@ -6,6 +6,8 @@ pub struct Vertex2D {
     pub color: [f32; 3],
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub struct VertexWithTexture2D {
     // Texture coordinates
     pub pos: [f32; 2],       // position for each point
