@@ -30,6 +30,7 @@ mod _command {
         index_buffer: vk::Buffer,
         pipeline_layout: vk::PipelineLayout,
         descriptor_sets: &Vec<vk::DescriptorSet>,
+        indices: &[u32],
     ) -> Vec<vk::CommandBuffer> {
         // Command buffer allocation
         let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
@@ -56,6 +57,7 @@ mod _command {
                 index_buffer,
                 pipeline_layout,
                 descriptor_sets,
+                indices,
             );
         }
 
@@ -130,6 +132,7 @@ mod _command {
         index_buffer: vk::Buffer,
         pipeline_layout: vk::PipelineLayout,
         descriptor_sets: &Vec<vk::DescriptorSet>,
+        indices: &[u32],
     ) {
         // Command buffer recording
         let begin_info = vk::CommandBufferBeginInfo::builder()
@@ -142,11 +145,20 @@ mod _command {
         }
 
         // Starting a render pass
-        let clear_colors = [vk::ClearValue {
-            color: vk::ClearColorValue {
-                float32: [0.0, 0.0, 0.0, 1.0],
+        // Clear values (Depth buffering)
+        let clear_values = [
+            vk::ClearValue {
+                color: vk::ClearColorValue {
+                    float32: [0.0, 0.0, 0.0, 1.0],
+                },
             },
-        }];
+            vk::ClearValue {
+                depth_stencil: vk::ClearDepthStencilValue {
+                    depth: 1.0,
+                    stencil: 0,
+                },
+            },
+        ];
 
         let render_pass_info = vk::RenderPassBeginInfo::builder()
             .render_pass(render_pass)
@@ -155,7 +167,7 @@ mod _command {
                 offset: vk::Offset2D { x: 0, y: 0 },
                 extent: swapchain_extent,
             })
-            .clear_values(&clear_colors);
+            .clear_values(&clear_values);
 
         unsafe {
             device.cmd_begin_render_pass(
@@ -216,14 +228,7 @@ mod _command {
         }
 
         unsafe {
-            device.cmd_draw_indexed(
-                command_buffer,
-                hello_triangle::INDICES.len() as u32,
-                1,
-                0,
-                0,
-                0,
-            );
+            device.cmd_draw_indexed(command_buffer, indices.len() as u32, 1, 0, 0, 0);
         }
 
         // Finishing up

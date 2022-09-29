@@ -83,34 +83,49 @@ mod _image {
             && new_layout == vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
         {
             1
+        } else if old_layout == vk::ImageLayout::UNDEFINED
+            && new_layout == vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        {
+            2
         } else {
             panic!("unsupported layout transition!");
         };
 
-        let src_access_mask = if mode == 0 {
-            vk::AccessFlags::empty()
+        let aspect_mask = if new_layout == vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL {
+            if vk_utils::swapchain::has_stencil_component(format) {
+                vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL
+            } else {
+                vk::ImageAspectFlags::DEPTH
+            }
         } else {
-            vk::AccessFlags::TRANSFER_WRITE
-        };
-        let dst_access_mask = if mode == 0 {
-            vk::AccessFlags::TRANSFER_WRITE
-        } else {
-            vk::AccessFlags::SHADER_READ
+            vk::ImageAspectFlags::COLOR
         };
 
-        let source_stage = if mode == 0 {
-            vk::PipelineStageFlags::TOP_OF_PIPE
-        } else {
-            vk::PipelineStageFlags::TRANSFER
+        let src_access_mask = match mode {
+            1 => vk::AccessFlags::TRANSFER_WRITE,
+            _ => vk::AccessFlags::empty(),
         };
-        let destination_stage = if mode == 0 {
-            vk::PipelineStageFlags::TRANSFER
-        } else {
-            vk::PipelineStageFlags::FRAGMENT_SHADER
+        let dst_access_mask = match mode {
+            1 => vk::AccessFlags::SHADER_READ,
+            2 => {
+                vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
+                    | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE
+            }
+            _ => vk::AccessFlags::TRANSFER_WRITE,
+        };
+
+        let source_stage = match mode {
+            1 => vk::PipelineStageFlags::TRANSFER,
+            _ => vk::PipelineStageFlags::TOP_OF_PIPE,
+        };
+        let destination_stage = match mode {
+            1 => vk::PipelineStageFlags::FRAGMENT_SHADER,
+            2 => vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+            _ => vk::PipelineStageFlags::TRANSFER,
         };
 
         let image_subresource_range = vk::ImageSubresourceRange::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .aspect_mask(aspect_mask)
             .base_mip_level(0)
             .level_count(1)
             .base_array_layer(0)

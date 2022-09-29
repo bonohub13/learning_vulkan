@@ -42,6 +42,138 @@ mod _buffer {
         (buffer, buffer_memory)
     }
 
+    pub fn create_vertex_buffer<T>(
+        instance: &ash::Instance,
+        device: &ash::Device,
+        physical_device: vk::PhysicalDevice,
+        command_pool: vk::CommandPool,
+        graphics_queue: vk::Queue,
+        vertices: &[T],
+    ) -> (vk::Buffer, vk::DeviceMemory) {
+        // Buffer creation
+        use std::mem::size_of_val;
+
+        // Using a stagin buffer
+        let buffer_size = size_of_val(vertices) as vk::DeviceSize;
+        let device_mem_properties =
+            unsafe { instance.get_physical_device_memory_properties(physical_device) };
+
+        let (staging_buffer, staging_buffer_memory) = create_buffer(
+            device,
+            buffer_size,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            &device_mem_properties,
+        );
+
+        // Filling the vertex buffer
+        let data = unsafe {
+            device
+                .map_memory(
+                    staging_buffer_memory,
+                    0,
+                    buffer_size,
+                    vk::MemoryMapFlags::empty(),
+                )
+                .expect("failed to map memory!") as *mut T
+        };
+
+        unsafe {
+            data.copy_from_nonoverlapping(vertices.as_ptr(), vertices.len());
+
+            device.unmap_memory(staging_buffer_memory);
+        }
+
+        let (vertex_buffer, vertex_buffer_memory) = create_buffer(
+            device,
+            buffer_size,
+            vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            &device_mem_properties,
+        );
+
+        copy_buffer(
+            device,
+            graphics_queue,
+            command_pool,
+            staging_buffer,
+            vertex_buffer,
+            buffer_size,
+        );
+
+        // Cleaning up staging buffer
+        unsafe {
+            device.destroy_buffer(staging_buffer, None);
+            device.free_memory(staging_buffer_memory, None);
+        }
+
+        (vertex_buffer, vertex_buffer_memory)
+    }
+
+    pub fn create_index_buffer(
+        instance: &ash::Instance,
+        device: &ash::Device,
+        physical_device: vk::PhysicalDevice,
+        command_pool: vk::CommandPool,
+        graphics_queue: vk::Queue,
+        indices: &[u32],
+    ) -> (vk::Buffer, vk::DeviceMemory) {
+        // Index buffer creation
+        use std::mem::size_of_val;
+
+        let buffer_size = size_of_val(indices) as vk::DeviceSize;
+        let device_mem_properties =
+            unsafe { instance.get_physical_device_memory_properties(physical_device) };
+
+        let (staging_buffer, staging_buffer_memory) = create_buffer(
+            device,
+            buffer_size,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            &device_mem_properties,
+        );
+
+        let data = unsafe {
+            device
+                .map_memory(
+                    staging_buffer_memory,
+                    0,
+                    buffer_size,
+                    vk::MemoryMapFlags::empty(),
+                )
+                .expect("failed to map memory!") as *mut u32
+        };
+
+        unsafe {
+            data.copy_from_nonoverlapping(indices.as_ptr(), indices.len());
+            device.unmap_memory(staging_buffer_memory);
+        }
+
+        let (index_buffer, index_buffer_memory) = create_buffer(
+            device,
+            buffer_size,
+            vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            &device_mem_properties,
+        );
+
+        copy_buffer(
+            device,
+            graphics_queue,
+            command_pool,
+            staging_buffer,
+            index_buffer,
+            buffer_size,
+        );
+
+        unsafe {
+            device.destroy_buffer(staging_buffer, None);
+            device.free_memory(staging_buffer_memory, None);
+        }
+
+        (index_buffer, index_buffer_memory)
+    }
+
     pub fn copy_buffer(
         device: &ash::Device,
         graphics_queue: vk::Queue,
@@ -86,4 +218,6 @@ mod _buffer {
     }
 }
 
-pub use _buffer::{copy_buffer, create_buffer, find_memory_type};
+pub use _buffer::{
+    copy_buffer, create_buffer, create_index_buffer, create_vertex_buffer, find_memory_type,
+};

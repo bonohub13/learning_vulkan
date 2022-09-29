@@ -7,13 +7,19 @@ mod _framebuffer {
         device: &ash::Device,
         render_pass: vk::RenderPass,
         image_views: &Vec<vk::ImageView>,
+        depth_image_view: vk::ImageView,
         swapchain_extent: &vk::Extent2D,
     ) -> Vec<vk::Framebuffer> {
         // Framebuffers
         image_views
             .iter()
             .map(|&image_view| {
-                let attachments = [image_view];
+                let mut attachments = vec![image_view];
+
+                if depth_image_view != vk::ImageView::null() {
+                    attachments.push(depth_image_view);
+                }
+
                 let framebuffer_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(render_pass)
                     .attachments(&attachments)

@@ -142,7 +142,7 @@ mod _swapchain {
                         .expect("failed to create image view!")
                 }
                  */
-                create_image_view(device, image, surface_format)
+                create_image_view(device, image, surface_format, vk::ImageAspectFlags::COLOR)
             })
             .collect();
 
@@ -153,6 +153,7 @@ mod _swapchain {
         device: &ash::Device,
         texture_image: vk::Image,
         format: vk::Format,
+        aspect_flags: vk::ImageAspectFlags,
     ) -> vk::ImageView {
         let view_info = vk::ImageViewCreateInfo::builder()
             .image(texture_image)
@@ -165,7 +166,7 @@ mod _swapchain {
                 a: vk::ComponentSwizzle::IDENTITY,
             })
             .subresource_range(vk::ImageSubresourceRange {
-                aspect_mask: vk::ImageAspectFlags::COLOR,
+                aspect_mask: aspect_flags,
                 base_mip_level: 0,
                 level_count: 1,
                 base_array_layer: 0,
@@ -178,8 +179,55 @@ mod _swapchain {
                 .expect("failed to create texture image view!")
         }
     }
+
+    pub fn find_supported_format(
+        instance: &ash::Instance,
+        physical_device: vk::PhysicalDevice,
+        candidates: &Vec<vk::Format>,
+        tiling: vk::ImageTiling,
+        features: vk::FormatFeatureFlags,
+    ) -> Result<vk::Format, String> {
+        for &format in candidates.iter() {
+            let props =
+                unsafe { instance.get_physical_device_format_properties(physical_device, format) };
+
+            if (tiling == vk::ImageTiling::LINEAR
+                && props.linear_tiling_features & features == features)
+                || (tiling == vk::ImageTiling::OPTIMAL
+                    && props.optimal_tiling_features & features == features)
+            {
+                return Ok(format);
+            }
+        }
+
+        Err(String::from("failed to find supported format!"))
+    }
+
+    pub fn find_depth_format(
+        instance: &ash::Instance,
+        physical_device: vk::PhysicalDevice,
+    ) -> Result<vk::Format, String> {
+        let formats = vec![
+            vk::Format::D32_SFLOAT,
+            vk::Format::D32_SFLOAT_S8_UINT,
+            vk::Format::D24_UNORM_S8_UINT,
+        ];
+
+        find_supported_format(
+            instance,
+            physical_device,
+            &formats,
+            vk::ImageTiling::OPTIMAL,
+            vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
+        )
+    }
+
+    pub fn has_stencil_component(format: vk::Format) -> bool {
+        format == vk::Format::D32_SFLOAT_S8_UINT || format == vk::Format::D24_UNORM_S8_UINT
+    }
 }
 
 pub use _swapchain::{
-    create_image_view, create_image_views, create_swap_chain, query_swapchain_support,
+    create_image_view, create_image_views, create_swap_chain, find_depth_format,
+    find_supported_format, has_stencil_component, query_swapchain_support,
 };

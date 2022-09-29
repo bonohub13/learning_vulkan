@@ -2,11 +2,13 @@ mod _render_pass {
     use ash::vk;
 
     pub fn create_render_pass(
+        instance: &ash::Instance,
+        physical_device: vk::PhysicalDevice,
         device: &ash::Device,
         swapchain_format: vk::Format,
     ) -> vk::RenderPass {
         // Attachment description
-        let color_attachments = [vk::AttachmentDescription::builder()
+        let color_attachment = vk::AttachmentDescription::builder()
             .format(swapchain_format)
             .samples(vk::SampleCountFlags::TYPE_1)
             .load_op(vk::AttachmentLoadOp::CLEAR)
@@ -15,7 +17,25 @@ mod _render_pass {
             .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
             .initial_layout(vk::ImageLayout::UNDEFINED)
             .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-            .build()];
+            .build();
+
+        // Render pass (Depth buffering)
+        let depth_attachment = vk::AttachmentDescription::builder()
+            .format(
+                crate::swapchain::find_depth_format(instance, physical_device)
+                    .expect("failed to find depth format!"),
+            )
+            .samples(vk::SampleCountFlags::TYPE_1)
+            .load_op(vk::AttachmentLoadOp::CLEAR)
+            .store_op(vk::AttachmentStoreOp::DONT_CARE)
+            .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+            .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+            .initial_layout(vk::ImageLayout::UNDEFINED)
+            .final_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            .build();
+        let depth_attachment_refs = vk::AttachmentReference::builder()
+            .attachment(1)
+            .layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
         // Subpasses and attachment references
         let color_attachment_refs = [vk::AttachmentReference::builder()
@@ -25,21 +45,33 @@ mod _render_pass {
         let subpasses = [vk::SubpassDescription::builder()
             .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
             .color_attachments(&color_attachment_refs)
+            .depth_stencil_attachment(&depth_attachment_refs)
             .build()];
 
         // Subpass dependecies
         let dependencies = [vk::SubpassDependency::builder()
             .src_subpass(vk::SUBPASS_EXTERNAL)
             .dst_subpass(0)
-            .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+            .src_stage_mask(
+                vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
+                    | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+            )
             .src_access_mask(vk::AccessFlags::NONE)
-            .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-            .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
+            .dst_stage_mask(
+                vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
+                    | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+            )
+            .dst_access_mask(
+                vk::AccessFlags::COLOR_ATTACHMENT_WRITE
+                    | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+            )
             .build()];
+
+        let attachments = [color_attachment, depth_attachment];
 
         // Render pass
         let render_pass_info = vk::RenderPassCreateInfo::builder()
-            .attachments(&color_attachments)
+            .attachments(&attachments)
             .subpasses(&subpasses)
             .dependencies(&dependencies);
 

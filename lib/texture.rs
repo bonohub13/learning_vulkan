@@ -239,6 +239,7 @@ mod _texture {
             device,
             texture_image,
             vk::Format::R8G8B8A8_SRGB,
+            vk::ImageAspectFlags::COLOR,
         );
 
         texture_image_view

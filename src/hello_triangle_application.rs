@@ -1,5 +1,6 @@
 mod _triangle {
     use vk_utils::{
+        attributes::Pipeline,
         constants::{
             hello_triangle, texture, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
             VK_VALIDATION_LAYER_NAMES, WIDTH,
@@ -124,11 +125,15 @@ mod _triangle {
                 &swapchain_info.swapchain_images,
             );
 
-            let render_pass =
-                vk_utils::render_pass::create_render_pass(&device, swapchain_info.swapchain_format);
+            let render_pass = vk_utils::render_pass::create_render_pass(
+                &instance,
+                physical_device,
+                &device,
+                swapchain_info.swapchain_format,
+            );
 
             let descriptor_set_layout = vk_utils::pipeline::create_descriptor_set_layout(&device);
-            let (graphics_pipeline, pipeline_layout) = vk_utils::pipeline::create_graphics_pipeline(
+            let (graphics_pipeline, pipeline_layout) = vk_types::Vertex2D::create_graphics_pipeline(
                 &device,
                 swapchain_info.swapchain_extent,
                 render_pass.clone(),
@@ -139,6 +144,7 @@ mod _triangle {
                 &device,
                 render_pass.clone(),
                 &swapchain_imageviews,
+                vk::ImageView::null(),
                 &swapchain_info.swapchain_extent,
             );
 
@@ -157,20 +163,22 @@ mod _triangle {
 
             let texture_sampler = vk_utils::texture::create_texture_sampler(&device);
 
-            let (vertex_buffer, vertex_buffer_memory) = Self::create_texture_vertex_buffer(
+            let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_vertex_buffer(
                 &instance,
                 &device,
                 physical_device.clone(),
                 command_pool,
                 graphics_queue,
+                &hello_triangle::VERTICES,
             );
 
-            let (index_buffer, index_buffer_memory) = Self::create_index_buffer(
+            let (index_buffer, index_buffer_memory) = vk_utils::buffer::create_index_buffer(
                 &instance,
                 &device,
                 physical_device.clone(),
                 command_pool,
                 graphics_queue,
+                &hello_triangle::INDICES,
             );
 
             let (uniform_buffers, uniform_buffers_memory) =
@@ -205,6 +213,7 @@ mod _triangle {
                 index_buffer,
                 pipeline_layout,
                 &descriptor_sets,
+                &hello_triangle::INDICES,
             );
 
             let sync_objects = vk_utils::framebuffer::create_sync_objects(&device);
@@ -356,212 +365,6 @@ mod _triangle {
                     .create_instance(&create_info, None)
                     .expect("failed to create instance!")
             }
-        }
-
-        #[allow(unused)]
-        fn create_vertex_buffer(
-            instance: &ash::Instance,
-            device: &ash::Device,
-            physical_device: vk::PhysicalDevice,
-            command_pool: vk::CommandPool,
-            graphics_queue: vk::Queue,
-        ) -> (vk::Buffer, vk::DeviceMemory) {
-            // Buffer creation
-            use std::mem::size_of_val;
-
-            // Using a stagin buffer
-            let buffer_size = size_of_val(&hello_triangle::VERTICES) as vk::DeviceSize;
-            let device_mem_properties =
-                unsafe { instance.get_physical_device_memory_properties(physical_device) };
-
-            let (staging_buffer, staging_buffer_memory) = vk_utils::buffer::create_buffer(
-                device,
-                buffer_size,
-                vk::BufferUsageFlags::TRANSFER_SRC,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                &device_mem_properties,
-            );
-
-            // Filling the vertex buffer
-            let data = unsafe {
-                device
-                    .map_memory(
-                        staging_buffer_memory,
-                        0,
-                        buffer_size,
-                        vk::MemoryMapFlags::empty(),
-                    )
-                    .expect("failed to map memory!")
-                    as *mut vk_utils::types::Vertex2D
-            };
-
-            unsafe {
-                data.copy_from_nonoverlapping(
-                    hello_triangle::VERTICES.as_ptr(),
-                    hello_triangle::VERTICES.len(),
-                );
-
-                device.unmap_memory(staging_buffer_memory);
-            }
-
-            let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_buffer(
-                device,
-                buffer_size,
-                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                &device_mem_properties,
-            );
-
-            vk_utils::buffer::copy_buffer(
-                device,
-                graphics_queue,
-                command_pool,
-                staging_buffer,
-                vertex_buffer,
-                buffer_size,
-            );
-
-            // Cleaning up staging buffer
-            unsafe {
-                device.destroy_buffer(staging_buffer, None);
-                device.free_memory(staging_buffer_memory, None);
-            }
-
-            (vertex_buffer, vertex_buffer_memory)
-        }
-
-        fn create_index_buffer(
-            instance: &ash::Instance,
-            device: &ash::Device,
-            physical_device: vk::PhysicalDevice,
-            command_pool: vk::CommandPool,
-            graphics_queue: vk::Queue,
-        ) -> (vk::Buffer, vk::DeviceMemory) {
-            // Index buffer creation
-            use std::mem::size_of_val;
-
-            let buffer_size = size_of_val(&hello_triangle::INDICES) as vk::DeviceSize;
-            let device_mem_properties =
-                unsafe { instance.get_physical_device_memory_properties(physical_device) };
-
-            let (staging_buffer, staging_buffer_memory) = vk_utils::buffer::create_buffer(
-                device,
-                buffer_size,
-                vk::BufferUsageFlags::TRANSFER_SRC,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                &device_mem_properties,
-            );
-
-            let data = unsafe {
-                device
-                    .map_memory(
-                        staging_buffer_memory,
-                        0,
-                        buffer_size,
-                        vk::MemoryMapFlags::empty(),
-                    )
-                    .expect("failed to map memory!") as *mut u32
-            };
-
-            unsafe {
-                data.copy_from_nonoverlapping(
-                    hello_triangle::INDICES.as_ptr(),
-                    hello_triangle::INDICES.len(),
-                );
-                device.unmap_memory(staging_buffer_memory);
-            }
-
-            let (index_buffer, index_buffer_memory) = vk_utils::buffer::create_buffer(
-                device,
-                buffer_size,
-                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                &device_mem_properties,
-            );
-
-            vk_utils::buffer::copy_buffer(
-                device,
-                graphics_queue,
-                command_pool,
-                staging_buffer,
-                index_buffer,
-                buffer_size,
-            );
-
-            unsafe {
-                device.destroy_buffer(staging_buffer, None);
-                device.free_memory(staging_buffer_memory, None);
-            }
-
-            (index_buffer, index_buffer_memory)
-        }
-
-        fn create_texture_vertex_buffer(
-            instance: &ash::Instance,
-            device: &ash::Device,
-            physical_device: vk::PhysicalDevice,
-            command_pool: vk::CommandPool,
-            graphics_queue: vk::Queue,
-        ) -> (vk::Buffer, vk::DeviceMemory) {
-            // Buffer creation
-            use std::mem::size_of_val;
-
-            // Using a stagin buffer
-            let buffer_size = size_of_val(&texture::VERTICES) as vk::DeviceSize;
-            let device_mem_properties =
-                unsafe { instance.get_physical_device_memory_properties(physical_device) };
-
-            let (staging_buffer, staging_buffer_memory) = vk_utils::buffer::create_buffer(
-                device,
-                buffer_size,
-                vk::BufferUsageFlags::TRANSFER_SRC,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                &device_mem_properties,
-            );
-
-            // Filling the vertex buffer
-            let data = unsafe {
-                device
-                    .map_memory(
-                        staging_buffer_memory,
-                        0,
-                        buffer_size,
-                        vk::MemoryMapFlags::empty(),
-                    )
-                    .expect("failed to map memory!")
-                    as *mut vk_utils::types::VertexWithTexture2D
-            };
-
-            unsafe {
-                data.copy_from_nonoverlapping(texture::VERTICES.as_ptr(), texture::VERTICES.len());
-
-                device.unmap_memory(staging_buffer_memory);
-            }
-
-            let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_buffer(
-                device,
-                buffer_size,
-                vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                &device_mem_properties,
-            );
-
-            vk_utils::buffer::copy_buffer(
-                device,
-                graphics_queue,
-                command_pool,
-                staging_buffer,
-                vertex_buffer,
-                buffer_size,
-            );
-
-            // Cleaning up staging buffer
-            unsafe {
-                device.destroy_buffer(staging_buffer, None);
-                device.free_memory(staging_buffer_memory, None);
-            }
-
-            (vertex_buffer, vertex_buffer_memory)
         }
 
         pub fn draw_frame(&mut self, delta_time: f32) {
@@ -758,9 +561,13 @@ mod _triangle {
                 &self.swapchain_images,
             );
 
-            self.render_pass =
-                vk_utils::render_pass::create_render_pass(&self.device, self.swapchain_format);
-            let (graphics_pipeline, pipeline_layout) = vk_utils::pipeline::create_graphics_pipeline(
+            self.render_pass = vk_utils::render_pass::create_render_pass(
+                &self.instance,
+                self.physical_device,
+                &self.device,
+                self.swapchain_format,
+            );
+            let (graphics_pipeline, pipeline_layout) = vk_types::Vertex2D::create_graphics_pipeline(
                 &self.device,
                 swapchain_info.swapchain_extent,
                 self.render_pass,
@@ -773,6 +580,7 @@ mod _triangle {
                 &self.device,
                 self.render_pass,
                 &self.swapchain_imageviews,
+                vk::ImageView::null(),
                 &self.swapchain_extent,
             );
 
@@ -787,6 +595,7 @@ mod _triangle {
                 self.index_buffer,
                 self.pipeline_layout,
                 &self.descriptor_sets,
+                &hello_triangle::INDICES,
             );
         }
     }

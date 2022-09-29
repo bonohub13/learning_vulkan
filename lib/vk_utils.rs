@@ -4,6 +4,7 @@ pub mod tools;
 
 pub mod types;
 
+pub mod attributes;
 pub mod buffer;
 pub mod command;
 pub mod device;

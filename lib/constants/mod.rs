@@ -83,9 +83,16 @@ pub mod hello_triangle {
 }
 
 pub mod texture {
+    pub const APPLICATION_NAME: &str = // app name
+        "Texture";
+    pub const APPLICATION_VERSION: u32 = // app version
+        ash::vk::make_api_version(0, 2, 1, 0);
+
     pub const TEXTURE_PATH: &'static str = "assets/texture.jpg";
 
-    pub const VERTICES: [crate::types::VertexWithTexture2D; 4] = [
+    pub const INDICES: [u32; 12] = [0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4];
+
+    pub const SQUARE_VERTICES: [crate::types::VertexWithTexture2D; 4] = [
         crate::types::VertexWithTexture2D {
             pos: [-0.5, -0.5],
             color: [1.0, 0.0, 0.0],
@@ -105,6 +112,49 @@ pub mod texture {
             pos: [-0.5, 0.5],
             color: [1.0, 1.0, 1.0],
             tex_coord: [1.0, 1.0],
+        },
+    ];
+
+    pub const VERTICES: [crate::types::VertexWithTexture3D; 8] = [
+        crate::types::VertexWithTexture3D {
+            pos: [-0.5, -0.5, 0.0],
+            color: [1.0, 0.0, 0.0],
+            tex_coord: [0.0, 0.0],
+        },
+        crate::types::VertexWithTexture3D {
+            pos: [0.5, -0.5, 0.0],
+            color: [0.0, 1.0, 0.0],
+            tex_coord: [1.0, 0.0],
+        },
+        crate::types::VertexWithTexture3D {
+            pos: [0.5, 0.5, 0.0],
+            color: [0.0, 0.0, 1.0],
+            tex_coord: [1.0, 1.0],
+        },
+        crate::types::VertexWithTexture3D {
+            pos: [-0.5, 0.5, 0.0],
+            color: [1.0, 1.0, 1.0],
+            tex_coord: [0.0, 1.0],
+        },
+        crate::types::VertexWithTexture3D {
+            pos: [-0.5, -0.5, -0.5],
+            color: [1.0, 0.0, 0.0],
+            tex_coord: [0.0, 0.0],
+        },
+        crate::types::VertexWithTexture3D {
+            pos: [0.5, -0.5, -0.5],
+            color: [0.0, 1.0, 0.0],
+            tex_coord: [1.0, 0.0],
+        },
+        crate::types::VertexWithTexture3D {
+            pos: [0.5, 0.5, -0.5],
+            color: [0.0, 0.0, 1.0],
+            tex_coord: [1.0, 1.0],
+        },
+        crate::types::VertexWithTexture3D {
+            pos: [-0.5, 0.5, -0.5],
+            color: [1.0, 1.0, 1.0],
+            tex_coord: [0.0, 1.0],
         },
     ];
 }
