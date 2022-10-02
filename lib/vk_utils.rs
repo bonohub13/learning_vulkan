@@ -10,6 +10,7 @@ pub mod command;
 pub mod device;
 pub mod framebuffer;
 pub mod image;
+pub mod model;
 pub mod pipeline;
 pub mod render_pass;
 pub mod surface;

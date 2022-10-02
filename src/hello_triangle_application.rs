@@ -150,7 +150,7 @@ mod _triangle {
 
             let command_pool = vk_utils::command::create_command_pool(&device, &family_indices);
 
-            let (texture_image, texture_image_memory) = {
+            let (texture_image, texture_image_memory, mip_levels) = {
                 let texture_image = vk_utils::texture::create_texture_image(
                     &device,
                     command_pool,
@@ -166,9 +166,9 @@ mod _triangle {
             };
 
             let texture_image_view =
-                vk_utils::texture::create_texture_image_view(&device, texture_image);
+                vk_utils::texture::create_texture_image_view(&device, texture_image, mip_levels);
 
-            let texture_sampler = vk_utils::texture::create_texture_sampler(&device);
+            let texture_sampler = vk_utils::texture::create_texture_sampler(&device, mip_levels);
 
             let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_vertex_buffer(
                 &instance,

@@ -166,7 +166,7 @@ mod _texture {
                 &swapchain_info.swapchain_extent,
             );
 
-            let (texture_image, texture_image_memory) = {
+            let (texture_image, texture_image_memory, mip_levels) = {
                 let texture_image = vk_utils::texture::create_texture_image(
                     &device,
                     command_pool,
@@ -182,9 +182,9 @@ mod _texture {
             };
 
             let texture_image_view =
-                vk_utils::texture::create_texture_image_view(&device, texture_image);
+                vk_utils::texture::create_texture_image_view(&device, texture_image, mip_levels);
 
-            let texture_sampler = vk_utils::texture::create_texture_sampler(&device);
+            let texture_sampler = vk_utils::texture::create_texture_sampler(&device, mip_levels);
 
             let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_vertex_buffer(
                 &instance,
@@ -402,7 +402,7 @@ mod _texture {
             command_pool: vk::CommandPool,
             swapchain_extent: vk::Extent2D,
             graphics_queue: vk::Queue,
-            device_memory_propertie: &vk::PhysicalDeviceMemoryProperties,
+            device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         ) -> (vk::Image, vk::DeviceMemory, vk::ImageView) {
             // Depth image and view
             let depth_format = vk_utils::swapchain::find_depth_format(instance, physical_device)
@@ -412,17 +412,19 @@ mod _texture {
                 device,
                 swapchain_extent.width,
                 swapchain_extent.height,
+                1,
                 depth_format,
                 vk::ImageTiling::OPTIMAL,
                 vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                device_memory_propertie,
+                device_memory_properties,
             );
             let depth_image_view = vk_utils::swapchain::create_image_view(
                 device,
                 depth_image,
                 depth_format,
                 vk::ImageAspectFlags::DEPTH,
+                1,
             );
 
             // Explicitly transitioning the depth image
@@ -434,6 +436,7 @@ mod _texture {
                 vk::ImageLayout::UNDEFINED,
                 vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 graphics_queue,
+                1,
             );
 
             (depth_image, depth_image_memory, depth_image_view)

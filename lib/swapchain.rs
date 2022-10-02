@@ -142,7 +142,13 @@ mod _swapchain {
                         .expect("failed to create image view!")
                 }
                  */
-                create_image_view(device, image, surface_format, vk::ImageAspectFlags::COLOR)
+                create_image_view(
+                    device,
+                    image,
+                    surface_format,
+                    vk::ImageAspectFlags::COLOR,
+                    1,
+                )
             })
             .collect();
 
@@ -154,6 +160,7 @@ mod _swapchain {
         texture_image: vk::Image,
         format: vk::Format,
         aspect_flags: vk::ImageAspectFlags,
+        mip_levels: u32,
     ) -> vk::ImageView {
         let view_info = vk::ImageViewCreateInfo::builder()
             .image(texture_image)
@@ -168,7 +175,7 @@ mod _swapchain {
             .subresource_range(vk::ImageSubresourceRange {
                 aspect_mask: aspect_flags,
                 base_mip_level: 0,
-                level_count: 1,
+                level_count: mip_levels,
                 base_array_layer: 0,
                 layer_count: 1,
             });

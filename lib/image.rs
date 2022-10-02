@@ -6,6 +6,7 @@ mod _image {
         device: &ash::Device,
         width: u32,
         height: u32,
+        mip_levels: u32,
         format: vk::Format,
         tiling: vk::ImageTiling,
         usage: vk::ImageUsageFlags,
@@ -27,7 +28,8 @@ mod _image {
             .initial_layout(vk::ImageLayout::UNDEFINED)
             .usage(usage)
             .samples(vk::SampleCountFlags::TYPE_1)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+            .sharing_mode(vk::SharingMode::EXCLUSIVE)
+            .mip_levels(mip_levels);
 
         let image = unsafe {
             device
@@ -68,6 +70,7 @@ mod _image {
         old_layout: vk::ImageLayout,
         new_layout: vk::ImageLayout,
         graphics_queue: vk::Queue,
+        mip_levels: u32,
     ) {
         use vk_utils::command::{begin_single_time_commands, end_single_time_commands};
 
@@ -127,7 +130,7 @@ mod _image {
         let image_subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(aspect_mask)
             .base_mip_level(0)
-            .level_count(1)
+            .level_count(mip_levels)
             .base_array_layer(0)
             .layer_count(1)
             .build();

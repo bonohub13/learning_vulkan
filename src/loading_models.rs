@@ -63,6 +63,7 @@ mod _loading_models {
         depth_image_memory: vk::DeviceMemory,
         depth_image_view: vk::ImageView,
 
+        mip_levels: u32,
         texture_image: vk::Image,
         texture_image_view: vk::ImageView,
         texture_image_memory: vk::DeviceMemory,
@@ -169,7 +170,17 @@ mod _loading_models {
                 &swapchain_info.swapchain_extent,
             );
 
-            let (texture_image, texture_image_memory) = {
+            let result = vk_utils::texture::check_mipmap_support(
+                &instance,
+                physical_device,
+                vk::Format::R8G8B8A8_SRGB,
+            );
+
+            if result.is_err() {
+                panic!("{}", result.err().unwrap());
+            }
+
+            let (texture_image, texture_image_memory, mip_levels) = {
                 let texture_image = vk_utils::texture::create_texture_image(
                     &device,
                     command_pool,
@@ -185,12 +196,12 @@ mod _loading_models {
             };
 
             let texture_image_view =
-                vk_utils::texture::create_texture_image_view(&device, texture_image);
+                vk_utils::texture::create_texture_image_view(&device, texture_image, mip_levels);
 
-            let texture_sampler = vk_utils::texture::create_texture_sampler(&device);
+            let texture_sampler = vk_utils::texture::create_texture_sampler(&device, mip_levels);
 
             let (vertices, indices) = {
-                let model = Self::load_model(&std::path::Path::new(model::MODEL_PATH));
+                let model = vk_utils::model::load_model(&std::path::Path::new(model::MODEL_PATH));
                 match model {
                     Ok((vertices, indices)) => (vertices, indices),
                     Err(err) => panic!("{}", err),
@@ -288,6 +299,7 @@ mod _loading_models {
                 depth_image_memory,
                 depth_image_view,
 
+                mip_levels,
                 texture_image,
                 texture_image_view,
                 texture_sampler,
@@ -415,7 +427,7 @@ mod _loading_models {
             command_pool: vk::CommandPool,
             swapchain_extent: vk::Extent2D,
             graphics_queue: vk::Queue,
-            device_memory_propertie: &vk::PhysicalDeviceMemoryProperties,
+            device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         ) -> (vk::Image, vk::DeviceMemory, vk::ImageView) {
             // Depth image and view
             let depth_format = vk_utils::swapchain::find_depth_format(instance, physical_device)
@@ -425,17 +437,19 @@ mod _loading_models {
                 device,
                 swapchain_extent.width,
                 swapchain_extent.height,
+                1,
                 depth_format,
                 vk::ImageTiling::OPTIMAL,
                 vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                device_memory_propertie,
+                device_memory_properties,
             );
             let depth_image_view = vk_utils::swapchain::create_image_view(
                 device,
                 depth_image,
                 depth_format,
                 vk::ImageAspectFlags::DEPTH,
+                1,
             );
 
             // Explicitly transitioning the depth image
@@ -447,53 +461,10 @@ mod _loading_models {
                 vk::ImageLayout::UNDEFINED,
                 vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 graphics_queue,
+                1,
             );
 
             (depth_image, depth_image_memory, depth_image_view)
-        }
-
-        fn load_model(
-            model_path: &std::path::Path,
-        ) -> Result<(Vec<vk_types::VertexWithTexture3D>, Vec<u32>), String> {
-            let load_options = tobj::LoadOptions::default();
-            let model_obj = tobj::load_obj(model_path, &load_options);
-
-            if model_obj.is_err() {
-                return Err(String::from("failed to load model object!"));
-            }
-
-            let model_obj = model_obj.unwrap();
-            let mut vertices = vec![];
-            let mut indices = vec![];
-
-            for model in model_obj.0.iter() {
-                let mesh = &model.mesh;
-
-                if mesh.texcoords.len() == 0 {
-                    return Err(String::from("Missing texture coordinate for the model!"));
-                }
-
-                let total_vertices_count = mesh.positions.len() / 3;
-
-                for i in 0..total_vertices_count {
-                    let vertex = vk_types::VertexWithTexture3D::new(
-                        [
-                            mesh.positions[i * 3],
-                            mesh.positions[i * 3 + 1],
-                            mesh.positions[i * 3 + 2],
-                            1.0,
-                        ],
-                        [1.0, 1.0, 1.0],
-                        [mesh.texcoords[i * 2], mesh.texcoords[i * 2 + 1]],
-                    );
-
-                    vertices.push(vertex);
-                }
-
-                indices = mesh.indices.clone();
-            }
-
-            Ok((vertices, indices))
         }
 
         pub fn draw_frame(&mut self, delta_time: f32) {
