@@ -4,19 +4,25 @@ use crate::attributes::{Pipeline, Vertex};
 #[derive(Clone, Copy)]
 pub struct VertexWithTexture3D {
     // Texture coordinates
-    pub pos: [f32; 3],       // position for each point
+    pub pos: [f32; 4],       // position for each point
     pub color: [f32; 3],     // color (R, G, B)
     pub tex_coord: [f32; 2], // coordinate for texture
 }
 
 impl VertexWithTexture3D {
     #[inline]
-    pub fn new(pos: [f32; 3], color: [f32; 3], texture_coordinate: [f32; 2]) -> Self {
+    pub fn new(pos: [f32; 4], color: [f32; 3], texture_coordinate: [f32; 2]) -> Self {
         Self {
             pos,
             color,
             tex_coord: texture_coordinate,
         }
+    }
+}
+
+impl PartialEq for VertexWithTexture3D {
+    fn eq(&self, other: &Self) -> bool {
+        self.pos == other.pos && self.color == other.color && self.tex_coord == other.tex_coord
     }
 }
 

@@ -132,7 +132,7 @@ mod _texture {
         device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
         image_path: &std::path::Path,
         graphics_queue: vk::Queue,
-    ) -> (vk::Image, vk::DeviceMemory) {
+    ) -> Result<(vk::Image, vk::DeviceMemory), String> {
         use std::mem::size_of;
 
         // Loading an image
@@ -143,16 +143,20 @@ mod _texture {
         let image_size = (size_of::<u8>() as u32 * tex_width * tex_height * 4) as vk::DeviceSize;
         let image_data = match &image_obj {
             image::DynamicImage::ImageLuma8(_) | image::DynamicImage::ImageRgb8(_) => {
-                image_obj.to_rgba8().into_raw()
+                Some(image_obj.to_rgba8().into_raw())
             }
             image::DynamicImage::ImageLumaA8(_) | image::DynamicImage::ImageRgba8(_) => {
-                image_obj.into_bytes()
+                Some(image_obj.into_bytes())
             }
-            &_ => panic!("invalid image format!"),
+            &_ => None,
         };
 
+        if image_data.is_none() {
+            return Err(String::from("invalid image format!"));
+        }
+
         if image_size <= 0 {
-            panic!("failed to load texture image!");
+            return Err(String::from("failed to load texture image!"));
         }
 
         // Staging buffer
@@ -174,6 +178,8 @@ mod _texture {
                 )
                 .expect("failed to map memory!") as *mut u8
         };
+
+        let image_data = image_data.unwrap();
 
         unsafe {
             data.copy_from_nonoverlapping(image_data.as_ptr(), image_data.len());
@@ -227,7 +233,7 @@ mod _texture {
             device.free_memory(staging_buffer_memory, None);
         }
 
-        (texture_image, texture_image_memory)
+        Ok((texture_image, texture_image_memory))
     }
 
     pub fn create_texture_image_view(

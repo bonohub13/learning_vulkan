@@ -150,13 +150,20 @@ mod _triangle {
 
             let command_pool = vk_utils::command::create_command_pool(&device, &family_indices);
 
-            let (texture_image, texture_image_memory) = vk_utils::texture::create_texture_image(
-                &device,
-                command_pool,
-                &physical_device_memory_properties,
-                &std::path::Path::new(texture::TEXTURE_PATH),
-                graphics_queue,
-            );
+            let (texture_image, texture_image_memory) = {
+                let texture_image = vk_utils::texture::create_texture_image(
+                    &device,
+                    command_pool,
+                    &physical_device_memory_properties,
+                    &std::path::Path::new(texture::TEXTURE_PATH),
+                    graphics_queue,
+                );
+
+                match texture_image {
+                    Ok(texture_image) => texture_image,
+                    Err(err) => panic!("{}", err),
+                }
+            };
 
             let texture_image_view =
                 vk_utils::texture::create_texture_image_view(&device, texture_image);

@@ -1,9 +1,10 @@
 mod hello_triangle_application;
+mod loading_models;
 mod textures;
 
 use vk_utils::constants::*;
 
-use textures::Textures;
+use loading_models::LoadingModel;
 
 use winit::{
     dpi::PhysicalSize,
@@ -22,7 +23,7 @@ fn main() {
         .build(&event_loop)
         .unwrap();
     let mut tick_counter = vk_utils::fps::FPSLimiter::new();
-    let mut app = Textures::new(&window);
+    let mut app = LoadingModel::new(&window);
 
     // Application loop
     event_loop.run(move |event, _, control_flow| {

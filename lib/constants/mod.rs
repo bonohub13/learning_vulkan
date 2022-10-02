@@ -117,44 +117,54 @@ pub mod texture {
 
     pub const VERTICES: [crate::types::VertexWithTexture3D; 8] = [
         crate::types::VertexWithTexture3D {
-            pos: [-0.5, -0.5, 0.0],
+            pos: [-0.5, -0.5, 0.0, 1.0],
             color: [1.0, 0.0, 0.0],
             tex_coord: [0.0, 0.0],
         },
         crate::types::VertexWithTexture3D {
-            pos: [0.5, -0.5, 0.0],
+            pos: [0.5, -0.5, 0.0, 1.0],
             color: [0.0, 1.0, 0.0],
             tex_coord: [1.0, 0.0],
         },
         crate::types::VertexWithTexture3D {
-            pos: [0.5, 0.5, 0.0],
+            pos: [0.5, 0.5, 0.0, 1.0],
             color: [0.0, 0.0, 1.0],
             tex_coord: [1.0, 1.0],
         },
         crate::types::VertexWithTexture3D {
-            pos: [-0.5, 0.5, 0.0],
+            pos: [-0.5, 0.5, 0.0, 1.0],
             color: [1.0, 1.0, 1.0],
             tex_coord: [0.0, 1.0],
         },
         crate::types::VertexWithTexture3D {
-            pos: [-0.5, -0.5, -0.5],
+            pos: [-0.5, -0.5, -0.5, 1.0],
             color: [1.0, 0.0, 0.0],
             tex_coord: [0.0, 0.0],
         },
         crate::types::VertexWithTexture3D {
-            pos: [0.5, -0.5, -0.5],
+            pos: [0.5, -0.5, -0.5, 1.0],
             color: [0.0, 1.0, 0.0],
             tex_coord: [1.0, 0.0],
         },
         crate::types::VertexWithTexture3D {
-            pos: [0.5, 0.5, -0.5],
+            pos: [0.5, 0.5, -0.5, 1.0],
             color: [0.0, 0.0, 1.0],
             tex_coord: [1.0, 1.0],
         },
         crate::types::VertexWithTexture3D {
-            pos: [-0.5, 0.5, -0.5],
+            pos: [-0.5, 0.5, -0.5, 1.0],
             color: [1.0, 1.0, 1.0],
             tex_coord: [0.0, 1.0],
         },
     ];
+}
+
+pub mod model {
+    pub const APPLICATION_NAME: &str = // app name
+        "Loading models";
+    pub const APPLICATION_VERSION: u32 = // app version
+        ash::vk::make_api_version(0, 3, 1, 0);
+
+    pub const MODEL_PATH: &'static str = "assets/viking_room.obj";
+    pub const TEXTURE_PATH: &'static str = "assets/viking_room.png";
 }

@@ -1,8 +1,8 @@
-mod _texture {
+mod _loading_models {
     use vk_utils::{
         attributes::Pipeline,
         constants::{
-            texture, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
+            model, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
             VK_VALIDATION_LAYER_NAMES, WIDTH,
         },
         device::create_logical_device,
@@ -26,7 +26,7 @@ mod _texture {
         KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn, KhrPortabilitySubsetFn,
     };
 
-    pub struct Textures {
+    pub struct LoadingModel {
         _entry: Entry,
         instance: Instance,
 
@@ -68,6 +68,9 @@ mod _texture {
         texture_image_memory: vk::DeviceMemory,
         texture_sampler: vk::Sampler,
 
+        vertices: Vec<vk_types::VertexWithTexture3D>,
+        indices: Vec<u32>,
+
         vertex_buffer: vk::Buffer,
         vertex_buffer_memory: vk::DeviceMemory,
 
@@ -93,7 +96,7 @@ mod _texture {
         is_framebuffer_resized: bool,
     }
 
-    impl Textures {
+    impl LoadingModel {
         pub fn new(window: &Window) -> Self {
             use cgmath::SquareMatrix;
 
@@ -171,7 +174,7 @@ mod _texture {
                     &device,
                     command_pool,
                     &physical_device_memory_properties,
-                    &std::path::Path::new(texture::TEXTURE_PATH),
+                    &std::path::Path::new(model::TEXTURE_PATH),
                     graphics_queue,
                 );
 
@@ -186,13 +189,21 @@ mod _texture {
 
             let texture_sampler = vk_utils::texture::create_texture_sampler(&device);
 
+            let (vertices, indices) = {
+                let model = Self::load_model(&std::path::Path::new(model::MODEL_PATH));
+                match model {
+                    Ok((vertices, indices)) => (vertices, indices),
+                    Err(err) => panic!("{}", err),
+                }
+            };
+
             let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_vertex_buffer(
                 &instance,
                 &device,
                 physical_device.clone(),
                 command_pool,
                 graphics_queue,
-                &texture::VERTICES,
+                &vertices,
             );
 
             let (index_buffer, index_buffer_memory) = vk_utils::buffer::create_index_buffer(
@@ -201,7 +212,7 @@ mod _texture {
                 physical_device.clone(),
                 command_pool,
                 graphics_queue,
-                &texture::INDICES,
+                &indices,
             );
 
             let (uniform_buffers, uniform_buffers_memory) =
@@ -236,7 +247,7 @@ mod _texture {
                 index_buffer,
                 pipeline_layout,
                 &descriptor_sets,
-                &texture::INDICES,
+                &indices,
             );
 
             let sync_objects = vk_utils::framebuffer::create_sync_objects(&device);
@@ -281,6 +292,9 @@ mod _texture {
                 texture_image_view,
                 texture_sampler,
                 texture_image_memory,
+
+                vertices,
+                indices,
 
                 vertex_buffer,
                 vertex_buffer_memory,
@@ -335,9 +349,8 @@ mod _texture {
                 panic!("Validation layers requested, but not available!");
             }
 
-            let app_name = unsafe {
-                CStr::from_bytes_with_nul_unchecked(texture::APPLICATION_NAME.as_bytes())
-            };
+            let app_name =
+                unsafe { CStr::from_bytes_with_nul_unchecked(model::APPLICATION_NAME.as_bytes()) };
             let engine_name =
                 unsafe { CStr::from_bytes_with_nul_unchecked(ENGINE_NAME.as_bytes()) };
             let mut extension_names = ash_window::enumerate_required_extensions(window)
@@ -364,7 +377,7 @@ mod _texture {
 
             let app_info = vk::ApplicationInfo::builder()
                 .application_name(app_name)
-                .application_version(texture::APPLICATION_VERSION)
+                .application_version(model::APPLICATION_VERSION)
                 .engine_name(engine_name)
                 .engine_version(ENGINE_VERSION)
                 .api_version(vk::make_api_version(0, 1, 0, 0));
@@ -437,6 +450,50 @@ mod _texture {
             );
 
             (depth_image, depth_image_memory, depth_image_view)
+        }
+
+        fn load_model(
+            model_path: &std::path::Path,
+        ) -> Result<(Vec<vk_types::VertexWithTexture3D>, Vec<u32>), String> {
+            let load_options = tobj::LoadOptions::default();
+            let model_obj = tobj::load_obj(model_path, &load_options);
+
+            if model_obj.is_err() {
+                return Err(String::from("failed to load model object!"));
+            }
+
+            let model_obj = model_obj.unwrap();
+            let mut vertices = vec![];
+            let mut indices = vec![];
+
+            for model in model_obj.0.iter() {
+                let mesh = &model.mesh;
+
+                if mesh.texcoords.len() == 0 {
+                    return Err(String::from("Missing texture coordinate for the model!"));
+                }
+
+                let total_vertices_count = mesh.positions.len() / 3;
+
+                for i in 0..total_vertices_count {
+                    let vertex = vk_types::VertexWithTexture3D::new(
+                        [
+                            mesh.positions[i * 3],
+                            mesh.positions[i * 3 + 1],
+                            mesh.positions[i * 3 + 2],
+                            1.0,
+                        ],
+                        [1.0, 1.0, 1.0],
+                        [mesh.texcoords[i * 2], mesh.texcoords[i * 2 + 1]],
+                    );
+
+                    vertices.push(vertex);
+                }
+
+                indices = mesh.indices.clone();
+            }
+
+            Ok((vertices, indices))
         }
 
         pub fn draw_frame(&mut self, delta_time: f32) {
@@ -687,12 +744,12 @@ mod _texture {
                 self.index_buffer,
                 self.pipeline_layout,
                 &self.descriptor_sets,
-                &texture::INDICES,
+                &self.indices,
             );
         }
     }
 
-    impl Drop for Textures {
+    impl Drop for LoadingModel {
         fn drop(&mut self) {
             unsafe {
                 for i in 0..MAX_FRAMES_IN_FLIGHT {
@@ -747,4 +804,4 @@ mod _texture {
     }
 }
 
-pub use _texture::Textures;
+pub use _loading_models::LoadingModel;
