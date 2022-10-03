@@ -122,3 +122,5 @@ When building the codes with docker, it is highly recommended to use [docker-roo
 If you build using standard docker (not rootless docker), the built binary might end up
 with root user ownership. (which sucks BTW when you want to build, run, remove the file)
 
+## TODO
+- Fix errors reported when running multisampling
