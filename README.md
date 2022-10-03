@@ -13,6 +13,8 @@ https://user-images.githubusercontent.com/33274231/192804498-993f2900-d466-4883-
 
 https://user-images.githubusercontent.com/33274231/193071546-081a95d3-40de-44b4-ac75-062b79c5ce35.mp4
 
+https://user-images.githubusercontent.com/33274231/193556199-9340d96d-627a-4a3d-9749-c7fd64008ee8.mp4
+
 ## So, what is this all about?
 
 This is a direct implementation of the [Vulkan Tutorial](https://vulkan-tutorial.com) using [Ash](https://docs.rs/ash). \
