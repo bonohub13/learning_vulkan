@@ -53,6 +53,7 @@ impl Vertex for Vertex2D {
 impl Pipeline for Vertex2D {
     fn create_graphics_pipeline(
         device: &ash::Device,
+        msaa_samples: ash::vk::SampleCountFlags,
         swapchain_extent: ash::vk::Extent2D,
         render_pass: ash::vk::RenderPass,
         descriptor_set_layout: ash::vk::DescriptorSetLayout,
@@ -138,9 +139,9 @@ impl Pipeline for Vertex2D {
 
         // Multisampling
         let multisampling = vk::PipelineMultisampleStateCreateInfo::builder()
-            .sample_shading_enable(false)
-            .rasterization_samples(vk::SampleCountFlags::TYPE_1)
-            .min_sample_shading(1.0) // Optional
+            .sample_shading_enable(true)
+            .rasterization_samples(msaa_samples)
+            .min_sample_shading(0.2) // Optional
             .alpha_to_coverage_enable(false) // Optional
             .alpha_to_one_enable(false); // Optional
 

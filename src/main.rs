@@ -1,10 +1,11 @@
 mod hello_triangle_application;
 mod loading_models;
+mod multisampling;
 mod textures;
 
 use vk_utils::constants::*;
 
-use loading_models::LoadingModel;
+use multisampling::Multisampling;
 
 use winit::{
     dpi::PhysicalSize,
@@ -23,7 +24,7 @@ fn main() {
         .build(&event_loop)
         .unwrap();
     let mut tick_counter = vk_utils::fps::FPSLimiter::new();
-    let mut app = LoadingModel::new(&window);
+    let mut app = Multisampling::new(&window);
 
     // Application loop
     event_loop.run(move |event, _, control_flow| {

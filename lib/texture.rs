@@ -193,6 +193,7 @@ mod _texture {
             tex_width,
             tex_height,
             mip_levels,
+            vk::SampleCountFlags::TYPE_1,
             vk::Format::R8G8B8A8_SRGB,
             vk::ImageTiling::OPTIMAL,
             vk::ImageUsageFlags::TRANSFER_SRC

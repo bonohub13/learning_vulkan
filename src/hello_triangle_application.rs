@@ -128,6 +128,7 @@ mod _triangle {
             let render_pass = vk_utils::render_pass::create_render_pass(
                 &instance,
                 physical_device,
+                vk::SampleCountFlags::TYPE_1,
                 &device,
                 swapchain_info.swapchain_format,
             );
@@ -135,6 +136,7 @@ mod _triangle {
             let descriptor_set_layout = vk_utils::pipeline::create_descriptor_set_layout(&device);
             let (graphics_pipeline, pipeline_layout) = vk_types::Vertex2D::create_graphics_pipeline(
                 &device,
+                vk::SampleCountFlags::TYPE_1,
                 swapchain_info.swapchain_extent,
                 render_pass.clone(),
                 descriptor_set_layout,
@@ -144,7 +146,8 @@ mod _triangle {
                 &device,
                 render_pass.clone(),
                 &swapchain_imageviews,
-                vk::ImageView::null(),
+                None,
+                None,
                 &swapchain_info.swapchain_extent,
             );
 
@@ -571,11 +574,13 @@ mod _triangle {
             self.render_pass = vk_utils::render_pass::create_render_pass(
                 &self.instance,
                 self.physical_device,
+                vk::SampleCountFlags::TYPE_1,
                 &self.device,
                 self.swapchain_format,
             );
             let (graphics_pipeline, pipeline_layout) = vk_types::Vertex2D::create_graphics_pipeline(
                 &self.device,
+                vk::SampleCountFlags::TYPE_1,
                 swapchain_info.swapchain_extent,
                 self.render_pass,
                 self.descriptor_set_layout,
@@ -587,7 +592,8 @@ mod _triangle {
                 &self.device,
                 self.render_pass,
                 &self.swapchain_imageviews,
-                vk::ImageView::null(),
+                None,
+                None,
                 &self.swapchain_extent,
             );
 

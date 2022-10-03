@@ -151,6 +151,7 @@ mod _physical_dev {
         let device_features = vk::PhysicalDeviceFeatures::builder()
             // Anistropy device feature
             .sampler_anisotropy(true)
+            .sample_rate_shading(true)
             .build();
 
         let required_validation_layers_raw: Vec<CString> = VK_VALIDATION_LAYER_NAMES
@@ -190,6 +191,40 @@ mod _physical_dev {
 
         (device, indices)
     }
+
+    pub fn get_max_usable_sample_count(
+        instance: &ash::Instance,
+        physical_device: vk::PhysicalDevice,
+    ) -> vk::SampleCountFlags {
+        let physical_device_properties =
+            unsafe { instance.get_physical_device_properties(physical_device) };
+        let counts = std::cmp::min(
+            physical_device_properties
+                .limits
+                .framebuffer_color_sample_counts,
+            physical_device_properties
+                .limits
+                .framebuffer_depth_sample_counts,
+        );
+
+        if counts.contains(vk::SampleCountFlags::TYPE_64) {
+            vk::SampleCountFlags::TYPE_64
+        } else if counts.contains(vk::SampleCountFlags::TYPE_32) {
+            vk::SampleCountFlags::TYPE_32
+        } else if counts.contains(vk::SampleCountFlags::TYPE_16) {
+            vk::SampleCountFlags::TYPE_16
+        } else if counts.contains(vk::SampleCountFlags::TYPE_8) {
+            vk::SampleCountFlags::TYPE_8
+        } else if counts.contains(vk::SampleCountFlags::TYPE_4) {
+            vk::SampleCountFlags::TYPE_4
+        } else if counts.contains(vk::SampleCountFlags::TYPE_2) {
+            vk::SampleCountFlags::TYPE_2
+        } else {
+            vk::SampleCountFlags::TYPE_1
+        }
+    }
 }
 
-pub use _physical_dev::{create_logical_device, find_queue_family, pick_physical_device};
+pub use _physical_dev::{
+    create_logical_device, find_queue_family, get_max_usable_sample_count, pick_physical_device,
+};

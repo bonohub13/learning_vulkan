@@ -137,6 +137,7 @@ mod _loading_models {
             let render_pass = vk_utils::render_pass::create_render_pass(
                 &instance,
                 physical_device,
+                vk::SampleCountFlags::TYPE_1,
                 &device,
                 swapchain_info.swapchain_format,
             );
@@ -145,6 +146,7 @@ mod _loading_models {
             let (graphics_pipeline, pipeline_layout) =
                 vk_types::VertexWithTexture3D::create_graphics_pipeline(
                     &device,
+                    vk::SampleCountFlags::TYPE_1,
                     swapchain_info.swapchain_extent,
                     render_pass.clone(),
                     descriptor_set_layout,
@@ -152,21 +154,24 @@ mod _loading_models {
 
             let command_pool = vk_utils::command::create_command_pool(&device, &family_indices);
 
-            let (depth_image, depth_image_memory, depth_image_view) = Self::create_depth_resources(
-                &instance,
-                &device,
-                physical_device,
-                command_pool,
-                swapchain_info.swapchain_extent,
-                graphics_queue,
-                &physical_device_memory_properties,
-            );
+            let (depth_image, depth_image_memory, depth_image_view) =
+                vk_utils::model::create_depth_resources(
+                    &instance,
+                    &device,
+                    physical_device,
+                    vk::SampleCountFlags::TYPE_1,
+                    command_pool,
+                    swapchain_info.swapchain_extent,
+                    graphics_queue,
+                    &physical_device_memory_properties,
+                );
 
             let swapchain_framebuffers = vk_utils::framebuffer::create_framebuffers(
                 &device,
                 render_pass.clone(),
                 &swapchain_imageviews,
-                depth_image_view,
+                None,
+                Some(depth_image_view),
                 &swapchain_info.swapchain_extent,
             );
 
@@ -420,53 +425,6 @@ mod _loading_models {
             }
         }
 
-        fn create_depth_resources(
-            instance: &ash::Instance,
-            device: &ash::Device,
-            physical_device: vk::PhysicalDevice,
-            command_pool: vk::CommandPool,
-            swapchain_extent: vk::Extent2D,
-            graphics_queue: vk::Queue,
-            device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
-        ) -> (vk::Image, vk::DeviceMemory, vk::ImageView) {
-            // Depth image and view
-            let depth_format = vk_utils::swapchain::find_depth_format(instance, physical_device)
-                .expect("failed to find depth format!");
-
-            let (depth_image, depth_image_memory) = vk_utils::image::create_image(
-                device,
-                swapchain_extent.width,
-                swapchain_extent.height,
-                1,
-                depth_format,
-                vk::ImageTiling::OPTIMAL,
-                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                device_memory_properties,
-            );
-            let depth_image_view = vk_utils::swapchain::create_image_view(
-                device,
-                depth_image,
-                depth_format,
-                vk::ImageAspectFlags::DEPTH,
-                1,
-            );
-
-            // Explicitly transitioning the depth image
-            vk_utils::image::transition_image_layout(
-                device,
-                command_pool,
-                depth_image,
-                depth_format,
-                vk::ImageLayout::UNDEFINED,
-                vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                graphics_queue,
-                1,
-            );
-
-            (depth_image, depth_image_memory, depth_image_view)
-        }
-
         pub fn draw_frame(&mut self, delta_time: f32) {
             // Waiting for the previous frame
             // Fixing a deadlock
@@ -668,12 +626,14 @@ mod _loading_models {
             self.render_pass = vk_utils::render_pass::create_render_pass(
                 &self.instance,
                 self.physical_device,
+                vk::SampleCountFlags::TYPE_1,
                 &self.device,
                 self.swapchain_format,
             );
             let (graphics_pipeline, pipeline_layout) =
                 vk_types::VertexWithTexture3D::create_graphics_pipeline(
                     &self.device,
+                    vk::SampleCountFlags::TYPE_1,
                     swapchain_info.swapchain_extent,
                     self.render_pass,
                     self.descriptor_set_layout,
@@ -682,10 +642,11 @@ mod _loading_models {
             self.pipeline_layout = pipeline_layout;
 
             // Handling window resize
-            let depth_resources = Self::create_depth_resources(
+            let depth_resources = vk_utils::model::create_depth_resources(
                 &self.instance,
                 &self.device,
                 self.physical_device,
+                vk::SampleCountFlags::TYPE_1,
                 self.command_pool,
                 self.swapchain_extent,
                 self.graphics_queue,
@@ -700,7 +661,8 @@ mod _loading_models {
                 &self.device,
                 self.render_pass,
                 &self.swapchain_imageviews,
-                self.depth_image_view,
+                None,
+                Some(self.depth_image_view),
                 &self.swapchain_extent,
             );
 

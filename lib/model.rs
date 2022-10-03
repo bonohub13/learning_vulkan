@@ -41,3 +41,53 @@ pub fn load_model(
 
     Ok((vertices, indices))
 }
+
+pub fn create_depth_resources(
+    instance: &ash::Instance,
+    device: &ash::Device,
+    physical_device: ash::vk::PhysicalDevice,
+    msaa_samples: ash::vk::SampleCountFlags,
+    command_pool: ash::vk::CommandPool,
+    swapchain_extent: ash::vk::Extent2D,
+    graphics_queue: ash::vk::Queue,
+    device_memory_properties: &ash::vk::PhysicalDeviceMemoryProperties,
+) -> (ash::vk::Image, ash::vk::DeviceMemory, ash::vk::ImageView) {
+    use ash::vk;
+    // Depth image and view
+    let depth_format = crate::swapchain::find_depth_format(instance, physical_device)
+        .expect("failed to find depth format!");
+
+    let (depth_image, depth_image_memory) = crate::image::create_image(
+        device,
+        swapchain_extent.width,
+        swapchain_extent.height,
+        1,
+        msaa_samples,
+        depth_format,
+        vk::ImageTiling::OPTIMAL,
+        vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        device_memory_properties,
+    );
+    let depth_image_view = crate::swapchain::create_image_view(
+        device,
+        depth_image,
+        depth_format,
+        vk::ImageAspectFlags::DEPTH,
+        1,
+    );
+
+    // Explicitly transitioning the depth image
+    crate::image::transition_image_layout(
+        device,
+        command_pool,
+        depth_image,
+        depth_format,
+        vk::ImageLayout::UNDEFINED,
+        vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        graphics_queue,
+        1,
+    );
+
+    (depth_image, depth_image_memory, depth_image_view)
+}

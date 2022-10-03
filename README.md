@@ -82,6 +82,8 @@ this is using builders to mitigate any unnessesary initialization.
     - [Loading models](https://vulkan-tutorial.com/Loading_models)
 - [chapter 28](https://github.com/bonohub13/learning_vulkan/tree/chapter_28)
     - [Generating Mipmaps](https://vulkan-tutorial.com/Generating_Mipmaps)
+- [chapter 29](https://github.com/bonohub13/learning_vulkan/tree/chapter_29)
+    - [Multisampling](https://vulkan-tutorial.com/Multisampling)
 
 ## Fatal commits
 - September 13, 2022 [FIXED: September 18, 2022]

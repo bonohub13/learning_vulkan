@@ -7,7 +7,8 @@ mod _framebuffer {
         device: &ash::Device,
         render_pass: vk::RenderPass,
         image_views: &Vec<vk::ImageView>,
-        depth_image_view: vk::ImageView,
+        color_image_view: Option<vk::ImageView>,
+        depth_image_view: Option<vk::ImageView>,
         swapchain_extent: &vk::Extent2D,
     ) -> Vec<vk::Framebuffer> {
         // Framebuffers
@@ -16,8 +17,11 @@ mod _framebuffer {
             .map(|&image_view| {
                 let mut attachments = vec![image_view];
 
-                if depth_image_view != vk::ImageView::null() {
-                    attachments.push(depth_image_view);
+                if depth_image_view.is_some() {
+                    attachments.push(depth_image_view.unwrap());
+                }
+                if color_image_view.is_some() {
+                    attachments.push(color_image_view.unwrap());
                 }
 
                 let framebuffer_info = vk::FramebufferCreateInfo::builder()

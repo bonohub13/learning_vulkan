@@ -92,24 +92,26 @@ pub mod texture {
 
     pub const INDICES: [u32; 12] = [0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4];
 
-    pub const SQUARE_VERTICES: [crate::types::VertexWithTexture2D; 4] = [
-        crate::types::VertexWithTexture2D {
-            pos: [-0.5, -0.5],
+    pub const SQUARE_INDICES: [u32; 6] = [0, 1, 2, 2, 3, 0];
+
+    pub const SQUARE_VERTICES: [crate::types::VertexWithTexture3D; 4] = [
+        crate::types::VertexWithTexture3D {
+            pos: [-0.5, -0.5, 0.0, 1.0],
             color: [1.0, 0.0, 0.0],
             tex_coord: [0.0, 1.0],
         },
-        crate::types::VertexWithTexture2D {
-            pos: [0.5, -0.5],
+        crate::types::VertexWithTexture3D {
+            pos: [0.5, -0.5, 0.0, 1.0],
             color: [0.0, 1.0, 0.0],
             tex_coord: [0.0, 0.0],
         },
-        crate::types::VertexWithTexture2D {
-            pos: [0.5, 0.5],
+        crate::types::VertexWithTexture3D {
+            pos: [0.5, 0.5, 0.0, 1.0],
             color: [0.0, 0.0, 1.0],
             tex_coord: [1.0, 0.0],
         },
-        crate::types::VertexWithTexture2D {
-            pos: [-0.5, 0.5],
+        crate::types::VertexWithTexture3D {
+            pos: [-0.5, 0.5, 0.0, 1.0],
             color: [1.0, 1.0, 1.0],
             tex_coord: [1.0, 1.0],
         },

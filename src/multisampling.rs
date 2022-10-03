@@ -1,8 +1,8 @@
-mod _texture {
+mod _multisampling {
     use vk_utils::{
         attributes::Pipeline,
         constants::{
-            texture, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
+            model, ENGINE_NAME, ENGINE_VERSION, HEIGHT, MAX_FRAMES_IN_FLIGHT,
             VK_VALIDATION_LAYER_NAMES, WIDTH,
         },
         device::create_logical_device,
@@ -26,7 +26,7 @@ mod _texture {
         KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn, KhrPortabilitySubsetFn,
     };
 
-    pub struct Textures {
+    pub struct Multisampling {
         _entry: Entry,
         instance: Instance,
 
@@ -39,6 +39,8 @@ mod _texture {
         physical_device: vk::PhysicalDevice,
         physical_device_memory_properties: vk::PhysicalDeviceMemoryProperties,
         device: Device,
+
+        msaa_samples: vk::SampleCountFlags,
 
         queue_family: QueueFamilyIndices,
         graphics_queue: vk::Queue,
@@ -58,15 +60,23 @@ mod _texture {
         pipeline_layout: vk::PipelineLayout,
         graphics_pipeline: vk::Pipeline,
 
+        color_image: vk::Image,
+        color_image_memory: vk::DeviceMemory,
+        color_image_view: vk::ImageView,
+
         // Depth image and view
         depth_image: vk::Image,
         depth_image_memory: vk::DeviceMemory,
         depth_image_view: vk::ImageView,
 
+        mip_levels: u32,
         texture_image: vk::Image,
         texture_image_view: vk::ImageView,
         texture_image_memory: vk::DeviceMemory,
         texture_sampler: vk::Sampler,
+
+        vertices: Vec<vk_types::VertexWithTexture3D>,
+        indices: Vec<u32>,
 
         vertex_buffer: vk::Buffer,
         vertex_buffer_memory: vk::DeviceMemory,
@@ -93,7 +103,7 @@ mod _texture {
         is_framebuffer_resized: bool,
     }
 
-    impl Textures {
+    impl Multisampling {
         pub fn new(window: &Window) -> Self {
             use cgmath::SquareMatrix;
 
@@ -106,6 +116,8 @@ mod _texture {
             let surface_info = vk_utils::surface::create_surface(&entry, &instance, window);
 
             let physical_device = vk_utils::device::pick_physical_device(&instance, &surface_info);
+            let msaa_samples =
+                vk_utils::device::get_max_usable_sample_count(&instance, physical_device);
             let physical_device_memory_properties =
                 unsafe { instance.get_physical_device_memory_properties(physical_device) };
             let (device, family_indices) =
@@ -133,7 +145,7 @@ mod _texture {
             let render_pass = vk_utils::render_pass::create_render_pass(
                 &instance,
                 physical_device,
-                vk::SampleCountFlags::TYPE_1,
+                msaa_samples,
                 &device,
                 swapchain_info.swapchain_format,
             );
@@ -142,7 +154,7 @@ mod _texture {
             let (graphics_pipeline, pipeline_layout) =
                 vk_types::VertexWithTexture3D::create_graphics_pipeline(
                     &device,
-                    vk::SampleCountFlags::TYPE_1,
+                    msaa_samples,
                     swapchain_info.swapchain_extent,
                     render_pass.clone(),
                     descriptor_set_layout,
@@ -150,12 +162,20 @@ mod _texture {
 
             let command_pool = vk_utils::command::create_command_pool(&device, &family_indices);
 
+            let (color_image, color_image_memory, color_image_view) = Self::create_color_resources(
+                &device,
+                msaa_samples,
+                swapchain_info.swapchain_extent,
+                swapchain_info.swapchain_format,
+                &physical_device_memory_properties,
+            );
+
             let (depth_image, depth_image_memory, depth_image_view) =
                 vk_utils::model::create_depth_resources(
                     &instance,
                     &device,
                     physical_device,
-                    vk::SampleCountFlags::TYPE_1,
+                    msaa_samples,
                     command_pool,
                     swapchain_info.swapchain_extent,
                     graphics_queue,
@@ -166,17 +186,27 @@ mod _texture {
                 &device,
                 render_pass.clone(),
                 &swapchain_imageviews,
-                None,
+                Some(color_image_view),
                 Some(depth_image_view),
                 &swapchain_info.swapchain_extent,
             );
+
+            let result = vk_utils::texture::check_mipmap_support(
+                &instance,
+                physical_device,
+                vk::Format::R8G8B8A8_SRGB,
+            );
+
+            if result.is_err() {
+                panic!("{}", result.err().unwrap());
+            }
 
             let (texture_image, texture_image_memory, mip_levels) = {
                 let texture_image = vk_utils::texture::create_texture_image(
                     &device,
                     command_pool,
                     &physical_device_memory_properties,
-                    &std::path::Path::new(texture::TEXTURE_PATH),
+                    &std::path::Path::new(model::TEXTURE_PATH),
                     graphics_queue,
                 );
 
@@ -191,13 +221,21 @@ mod _texture {
 
             let texture_sampler = vk_utils::texture::create_texture_sampler(&device, mip_levels);
 
+            let (vertices, indices) = {
+                let model = vk_utils::model::load_model(&std::path::Path::new(model::MODEL_PATH));
+                match model {
+                    Ok((vertices, indices)) => (vertices, indices),
+                    Err(err) => panic!("{}", err),
+                }
+            };
+
             let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_vertex_buffer(
                 &instance,
                 &device,
                 physical_device.clone(),
                 command_pool,
                 graphics_queue,
-                &texture::VERTICES,
+                &vertices,
             );
 
             let (index_buffer, index_buffer_memory) = vk_utils::buffer::create_index_buffer(
@@ -206,7 +244,7 @@ mod _texture {
                 physical_device.clone(),
                 command_pool,
                 graphics_queue,
-                &texture::INDICES,
+                &indices,
             );
 
             let (uniform_buffers, uniform_buffers_memory) =
@@ -241,7 +279,7 @@ mod _texture {
                 index_buffer,
                 pipeline_layout,
                 &descriptor_sets,
-                &texture::INDICES,
+                &indices,
             );
 
             let sync_objects = vk_utils::framebuffer::create_sync_objects(&device);
@@ -259,6 +297,8 @@ mod _texture {
                 physical_device,
                 physical_device_memory_properties,
                 device,
+
+                msaa_samples: vk::SampleCountFlags::TYPE_1,
 
                 queue_family: family_indices,
                 graphics_queue,
@@ -278,15 +318,22 @@ mod _texture {
                 pipeline_layout,
                 graphics_pipeline,
 
+                color_image,
+                color_image_memory,
+                color_image_view,
+
                 depth_image,
                 depth_image_memory,
                 depth_image_view,
 
+                mip_levels,
                 texture_image,
                 texture_image_view,
                 texture_sampler,
                 texture_image_memory,
 
+                vertices,
+                indices,
                 vertex_buffer,
                 vertex_buffer_memory,
 
@@ -340,9 +387,8 @@ mod _texture {
                 panic!("Validation layers requested, but not available!");
             }
 
-            let app_name = unsafe {
-                CStr::from_bytes_with_nul_unchecked(texture::APPLICATION_NAME.as_bytes())
-            };
+            let app_name =
+                unsafe { CStr::from_bytes_with_nul_unchecked(model::APPLICATION_NAME.as_bytes()) };
             let engine_name =
                 unsafe { CStr::from_bytes_with_nul_unchecked(ENGINE_NAME.as_bytes()) };
             let mut extension_names = ash_window::enumerate_required_extensions(window)
@@ -369,7 +415,7 @@ mod _texture {
 
             let app_info = vk::ApplicationInfo::builder()
                 .application_name(app_name)
-                .application_version(texture::APPLICATION_VERSION)
+                .application_version(model::APPLICATION_VERSION)
                 .engine_name(engine_name)
                 .engine_version(ENGINE_VERSION)
                 .api_version(vk::make_api_version(0, 1, 0, 0));
@@ -398,6 +444,40 @@ mod _texture {
                     .create_instance(&create_info, None)
                     .expect("failed to create instance!")
             }
+        }
+
+        fn create_color_resources(
+            device: &ash::Device,
+            msaa_samples: vk::SampleCountFlags,
+            swapchain_extent: vk::Extent2D,
+            swapchain_image_format: vk::Format,
+            physical_device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+        ) -> (vk::Image, vk::DeviceMemory, vk::ImageView) {
+            // Setting up a render target
+            let color_format = swapchain_image_format;
+
+            let (color_image, color_image_memory) = vk_utils::image::create_image(
+                device,
+                swapchain_extent.width,
+                swapchain_extent.height,
+                1,
+                msaa_samples,
+                color_format,
+                vk::ImageTiling::OPTIMAL,
+                vk::ImageUsageFlags::TRANSIENT_ATTACHMENT | vk::ImageUsageFlags::COLOR_ATTACHMENT,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                physical_device_memory_properties,
+            );
+
+            let color_image_view = vk_utils::swapchain::create_image_view(
+                device,
+                color_image,
+                color_format,
+                vk::ImageAspectFlags::COLOR,
+                1,
+            );
+
+            (color_image, color_image_memory, color_image_view)
         }
 
         pub fn draw_frame(&mut self, delta_time: f32) {
@@ -538,6 +618,10 @@ mod _texture {
 
         fn cleanup_swapchain(&self) {
             unsafe {
+                self.device.destroy_image_view(self.color_image_view, None);
+                self.device.destroy_image(self.color_image, None);
+                self.device.free_memory(self.color_image_memory, None);
+
                 self.device.destroy_image_view(self.depth_image_view, None);
                 self.device.destroy_image(self.depth_image, None);
                 self.device.free_memory(self.depth_image_memory, None);
@@ -601,14 +685,14 @@ mod _texture {
             self.render_pass = vk_utils::render_pass::create_render_pass(
                 &self.instance,
                 self.physical_device,
-                vk::SampleCountFlags::TYPE_1,
+                self.msaa_samples,
                 &self.device,
                 self.swapchain_format,
             );
             let (graphics_pipeline, pipeline_layout) =
                 vk_types::VertexWithTexture3D::create_graphics_pipeline(
                     &self.device,
-                    vk::SampleCountFlags::TYPE_1,
+                    self.msaa_samples,
                     swapchain_info.swapchain_extent,
                     self.render_pass,
                     self.descriptor_set_layout,
@@ -616,12 +700,24 @@ mod _texture {
             self.graphics_pipeline = graphics_pipeline;
             self.pipeline_layout = pipeline_layout;
 
+            (
+                self.color_image,
+                self.color_image_memory,
+                self.color_image_view,
+            ) = Self::create_color_resources(
+                &self.device,
+                self.msaa_samples,
+                self.swapchain_extent,
+                self.swapchain_format,
+                &self.physical_device_memory_properties,
+            );
+
             // Handling window resize
             let depth_resources = vk_utils::model::create_depth_resources(
                 &self.instance,
                 &self.device,
                 self.physical_device,
-                vk::SampleCountFlags::TYPE_1,
+                self.msaa_samples,
                 self.command_pool,
                 self.swapchain_extent,
                 self.graphics_queue,
@@ -636,7 +732,7 @@ mod _texture {
                 &self.device,
                 self.render_pass,
                 &self.swapchain_imageviews,
-                None,
+                Some(self.color_image_view),
                 Some(self.depth_image_view),
                 &self.swapchain_extent,
             );
@@ -652,12 +748,12 @@ mod _texture {
                 self.index_buffer,
                 self.pipeline_layout,
                 &self.descriptor_sets,
-                &texture::INDICES,
+                &self.indices,
             );
         }
     }
 
-    impl Drop for Textures {
+    impl Drop for Multisampling {
         fn drop(&mut self) {
             unsafe {
                 for i in 0..MAX_FRAMES_IN_FLIGHT {
@@ -712,4 +808,4 @@ mod _texture {
     }
 }
 
-pub use _texture::Textures;
+pub use _multisampling::Multisampling;

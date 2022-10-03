@@ -7,6 +7,7 @@ mod _image {
         width: u32,
         height: u32,
         mip_levels: u32,
+        num_samples: vk::SampleCountFlags,
         format: vk::Format,
         tiling: vk::ImageTiling,
         usage: vk::ImageUsageFlags,
@@ -27,7 +28,7 @@ mod _image {
             .tiling(tiling)
             .initial_layout(vk::ImageLayout::UNDEFINED)
             .usage(usage)
-            .samples(vk::SampleCountFlags::TYPE_1)
+            .samples(num_samples)
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
             .mip_levels(mip_levels);
 
