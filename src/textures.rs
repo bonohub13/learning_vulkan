@@ -189,7 +189,12 @@ mod _texture {
             let texture_image_view =
                 vk_utils::texture::create_texture_image_view(&device, texture_image, mip_levels);
 
-            let texture_sampler = vk_utils::texture::create_texture_sampler(&device, mip_levels);
+            let texture_sampler = vk_utils::texture::create_texture_sampler(
+                &instance,
+                &device,
+                physical_device,
+                mip_levels,
+            );
 
             let (vertex_buffer, vertex_buffer_memory) = vk_utils::buffer::create_vertex_buffer(
                 &instance,

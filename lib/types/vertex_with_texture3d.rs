@@ -142,20 +142,16 @@ impl Pipeline for VertexWithTexture3D {
         // Rasterizer
         let rasterizer = vk::PipelineRasterizationStateCreateInfo::builder()
             .depth_clamp_enable(false)
+            .rasterizer_discard_enable(false)
             .polygon_mode(vk::PolygonMode::FILL)
             .line_width(1.0)
             .cull_mode(vk::CullModeFlags::BACK)
-            /* TODO Research this! (UNKNOWN)
-             * In the Vulkan Tutorial, front_face is using vk::FrontFace::COUNTER_CLOCKWISE
-             * However, vk::FrontFace::CLOCKWISE seems to work for ash
-             * Value seems to be flipped somehow???
-             */
             .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
             .depth_bias_enable(false);
 
         // Multisampling
         let multisampling = vk::PipelineMultisampleStateCreateInfo::builder()
-            .sample_shading_enable(true)
+            .sample_shading_enable(false)
             .rasterization_samples(msaa_samples)
             .min_sample_shading(0.2) // Optional
             .alpha_to_coverage_enable(false) // Optional

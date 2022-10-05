@@ -15,14 +15,16 @@ mod _framebuffer {
         image_views
             .iter()
             .map(|&image_view| {
-                let mut attachments = vec![image_view];
+                let mut attachments = vec![];
 
-                if depth_image_view.is_some() {
-                    attachments.push(depth_image_view.unwrap());
-                }
+                // Order matters here!
                 if color_image_view.is_some() {
                     attachments.push(color_image_view.unwrap());
                 }
+                if depth_image_view.is_some() {
+                    attachments.push(depth_image_view.unwrap());
+                }
+                attachments.push(image_view);
 
                 let framebuffer_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(render_pass)

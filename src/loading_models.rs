@@ -203,7 +203,12 @@ mod _loading_models {
             let texture_image_view =
                 vk_utils::texture::create_texture_image_view(&device, texture_image, mip_levels);
 
-            let texture_sampler = vk_utils::texture::create_texture_sampler(&device, mip_levels);
+            let texture_sampler = vk_utils::texture::create_texture_sampler(
+                &instance,
+                &device,
+                physical_device,
+                mip_levels,
+            );
 
             let (vertices, indices) = {
                 let model = vk_utils::model::load_model(&std::path::Path::new(model::MODEL_PATH));

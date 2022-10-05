@@ -225,6 +225,11 @@ mod _texture {
             tex_height,
         );
 
+        unsafe {
+            device.destroy_buffer(staging_buffer, None);
+            device.free_memory(staging_buffer_memory, None);
+        }
+
         generate_mipmaps(
             device,
             command_pool,
@@ -234,11 +239,6 @@ mod _texture {
             mip_levels,
             graphics_queue,
         );
-
-        unsafe {
-            device.destroy_buffer(staging_buffer, None);
-            device.free_memory(staging_buffer_memory, None);
-        }
 
         Ok((texture_image, texture_image_memory, mip_levels))
     }
@@ -260,16 +260,22 @@ mod _texture {
         texture_image_view
     }
 
-    pub fn create_texture_sampler(device: &ash::Device, mip_levels: u32) -> vk::Sampler {
+    pub fn create_texture_sampler(
+        instance: &ash::Instance,
+        device: &ash::Device,
+        physical_device: vk::PhysicalDevice,
+        mip_levels: u32,
+    ) -> vk::Sampler {
         // Samplers
+        let properties = unsafe { instance.get_physical_device_properties(physical_device) };
         let sampler_info = vk::SamplerCreateInfo::builder()
             .mag_filter(vk::Filter::LINEAR)
             .min_filter(vk::Filter::LINEAR)
             .address_mode_u(vk::SamplerAddressMode::REPEAT)
             .address_mode_v(vk::SamplerAddressMode::REPEAT)
             .address_mode_w(vk::SamplerAddressMode::REPEAT)
-            .anisotropy_enable(false)
-            .max_anisotropy(1.0)
+            .anisotropy_enable(true)
+            .max_anisotropy(properties.limits.max_sampler_anisotropy)
             .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
             .unnormalized_coordinates(false)
             .compare_enable(false)

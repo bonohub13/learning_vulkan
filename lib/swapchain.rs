@@ -199,9 +199,9 @@ mod _swapchain {
                 unsafe { instance.get_physical_device_format_properties(physical_device, format) };
 
             if (tiling == vk::ImageTiling::LINEAR
-                && props.linear_tiling_features & features == features)
+                && props.linear_tiling_features.contains(features))
                 || (tiling == vk::ImageTiling::OPTIMAL
-                    && props.optimal_tiling_features & features == features)
+                    && props.optimal_tiling_features.contains(features))
             {
                 return Ok(format);
             }

@@ -120,6 +120,8 @@ mod _multisampling {
                 vk_utils::device::get_max_usable_sample_count(&instance, physical_device);
             let physical_device_memory_properties =
                 unsafe { instance.get_physical_device_memory_properties(physical_device) };
+            let physical_device_properties =
+                unsafe { instance.get_physical_device_properties(physical_device) };
             let (device, family_indices) =
                 create_logical_device(&instance, physical_device, &surface_info);
 
@@ -219,7 +221,12 @@ mod _multisampling {
             let texture_image_view =
                 vk_utils::texture::create_texture_image_view(&device, texture_image, mip_levels);
 
-            let texture_sampler = vk_utils::texture::create_texture_sampler(&device, mip_levels);
+            let texture_sampler = vk_utils::texture::create_texture_sampler(
+                &instance,
+                &device,
+                physical_device,
+                mip_levels,
+            );
 
             let (vertices, indices) = {
                 let model = vk_utils::model::load_model(&std::path::Path::new(model::MODEL_PATH));
@@ -298,7 +305,7 @@ mod _multisampling {
                 physical_device_memory_properties,
                 device,
 
-                msaa_samples: vk::SampleCountFlags::TYPE_1,
+                msaa_samples,
 
                 queue_family: family_indices,
                 graphics_queue,
