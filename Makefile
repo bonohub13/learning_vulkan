@@ -46,9 +46,9 @@ rebuild-win64-image:
 	docker build . -t ofv/windows -f docker/Dockerfile.windows --no-cache
 
 rebuild-linux-image:
-	cp Cargo.toml docker
+	tar cvf docker/build.tar Cargo.toml src lib
 	docker build . -t ofv/linux -f docker/Dockerfile.linux --no-cache
-	rm docker/Cargo.toml
+	rm docker/build.tar
 
 rebuild-all-images: rebuild-linux-image rebuild-win64-image
 

@@ -3,6 +3,7 @@ mod _surface {
     use crate::constants::{HEIGHT, WIDTH};
 
     use ash::{extensions::khr::Surface, vk, Entry, Instance};
+    use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
     use winit::window::Window;
 
     pub fn create_surface(
@@ -11,8 +12,14 @@ mod _surface {
         window: &Window,
     ) -> vk_utils::VkSurfaceInfo {
         let surface = unsafe {
-            ash_window::create_surface(entry, instance, window, None)
-                .expect("failed to create window surface!")
+            ash_window::create_surface(
+                entry,
+                instance,
+                window.raw_display_handle(),
+                window.raw_window_handle(),
+                None,
+            )
+            .expect("failed to create window surface!")
         };
         let surface_loader = Surface::new(entry, instance);
 

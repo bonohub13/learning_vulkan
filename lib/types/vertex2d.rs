@@ -107,6 +107,7 @@ impl Pipeline for Vertex2D {
             .primitive_restart_enable(false);
 
         // Viewports and scissors
+        /*
         let viewports = [vk::Viewport::builder()
             .x(0.0)
             .y(0.0)
@@ -119,9 +120,8 @@ impl Pipeline for Vertex2D {
             .offset(vk::Offset2D { x: 0, y: 0 })
             .extent(swapchain_extent)
             .build()];
-        let viewport_state = vk::PipelineViewportStateCreateInfo::builder()
-            .viewports(&viewports)
-            .scissors(&scissors);
+         */
+        let viewport_state = vk::PipelineViewportStateCreateInfo::builder();
 
         // Rasterizer
         let rasterizer = vk::PipelineRasterizationStateCreateInfo::builder()

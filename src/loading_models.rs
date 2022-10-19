@@ -365,6 +365,8 @@ mod _loading_models {
 
         #[inline]
         fn create_instance(entry: &Entry, window: &Window) -> Instance {
+            use raw_window_handle::HasRawDisplayHandle;
+
             if VK_VALIDATION_LAYER_NAMES.is_enable
                 && !vk_debug::check_validation_layer_support(entry)
             {
@@ -375,9 +377,10 @@ mod _loading_models {
                 unsafe { CStr::from_bytes_with_nul_unchecked(model::APPLICATION_NAME.as_bytes()) };
             let engine_name =
                 unsafe { CStr::from_bytes_with_nul_unchecked(ENGINE_NAME.as_bytes()) };
-            let mut extension_names = ash_window::enumerate_required_extensions(window)
-                .unwrap()
-                .to_vec();
+            let mut extension_names =
+                ash_window::enumerate_required_extensions(window.raw_display_handle())
+                    .unwrap()
+                    .to_vec();
 
             extension_names.push(DebugUtils::name().as_ptr());
 
